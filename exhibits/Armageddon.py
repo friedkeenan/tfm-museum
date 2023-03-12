@@ -83,8 +83,8 @@ class Armageddon(AdventureExhibit):
         await client.clear_carrying()
 
         # NOTE: I do not know whether the server still changed
-        # the feather progress for clients, but it would not
-        # have resulted in any visual changes.
+        # the feather progress after reaching the required feathers,
+        # but it would not have resulted in any visual changes.
         if client.feather_progress < self.FEATHER_TOTAL:
             await self.set_feather_progress(client, client.feather_progress + 1)
 
