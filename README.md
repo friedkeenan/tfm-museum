@@ -1,16 +1,13 @@
 # TFM Museum
 
-A proxy for Transformice that allows a player to experience historic occasions such as events.
+A utility for Transformice that allows a player to experience historic occasions such as events.
 
 ## Usage
 
-To experience an exhibit of the museum, you must use [tfm-proxy-loader](https://github.com/friedkeenan/tfm-proxy-loader) to load Transformice, and also have [caseus](https://github.com/friedkeenan/caseus) installed. Then you can simply run the `museum.py` file according to the following usage:
+To experience an exhibit of the museum, you must use [tfm-proxy-loader](https://github.com/friedkeenan/tfm-proxy-loader) to load Transformice, and also have [caseus](https://github.com/friedkeenan/caseus) installed. Then you can simply run the `python -m museum` command according to the following usage:
 
 ```
-usage: museum.py [-h] [--data-dir DATA_DIR] [--log] exhibit
-
-positional arguments:
-  exhibit              The exhibit to visit
+usage: museum [-h] [--data-dir DATA_DIR] [--log]
 
 options:
   -h, --help           show this help message and exit
@@ -18,11 +15,13 @@ options:
   --log                Log packets from the client and server
 ```
 
-For instance, to run the "[Armageddon](https://transformice.fandom.com/wiki/Armageddon_2016)" exhibit you would do `./museum.py Armageddon`, and then use the proxy loader to load the game. The game will seem normal, but if you head to the map editor and click the "validate map" button, you will be loaded into the exhibit. There is no need to load any XMLs or otherwise mess with the map editor. To exit the exhibit, you may click the "map editor" button in the menu options or use the `/editor` command. This will bring you back to the map editor.
+This will run a server implementation running on `localhost:11801` that you can connect to with the proxy loader. To enter the museum, simply get to the login page, enter a username, and press the "Submit" button; passwords are ignored. If your username is not already taken, then you will be welcomed into the museum. The rooms you enter correspond to the exhibits you can visit. For instance, going to the "armageddon" room will bring you to the "[Armageddon](https://transformice.fandom.com/wiki/Armageddon_2016)" exhibit. If you go to a room with no corresponding exhibit, you will be brought to the lobby, which is not a very exciting place.
+
+Please note that this server is **NOT** intended for a general audience. It implicitly trusts clients, and does not attempt much of any error handling, nor does it care that much about performance. Using this server for a general audience is a decidedly bad idea. Do not do it.
 
 ## Available Exhibits
 
-The currently available exhibits are
+The currently available exhibits are:
 
 - Armageddon
 
