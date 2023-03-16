@@ -29,7 +29,7 @@ class Museum(caseus.MinimalServer):
 
         async def wait_closed(self):
             if self.activity is caseus.enums.PlayerActivity.Alive:
-                await self.exhibit.kill(self, exclude=self)
+                await self.exhibit.kill(self, only_others=True)
 
             await super().wait_closed()
 
@@ -127,10 +127,15 @@ class Museum(caseus.MinimalServer):
 
         return self._find_or_add_exhibit(module._available_exhibit)
 
-    async def xml_data(self, path):
-        path = Path(self.data_dir, "maps", path)
+    async def data(self, path, *, binary=False):
+        path = Path(self.data_dir, path)
 
-        async with aiofiles.open(path) as f:
+        if binary:
+            mode = "rb"
+        else:
+            mode = "r"
+
+        async with aiofiles.open(path, mode) as f:
             return await f.read()
 
     @pak.packet_listener(caseus.serverbound.SetLanguagePacket)

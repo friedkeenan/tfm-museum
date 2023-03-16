@@ -129,13 +129,22 @@ class Exhibit(pak.AsyncPacketHandler):
         if self._map_xml_data is not None:
             return self._map_xml_data
 
-        self._map_xml_data = await self.museum.xml_data(self.map_xml_path)
+        self._map_xml_data = await self.museum.data(self.map_xml_path)
 
         return self._map_xml_data
 
-    async def kill(self, client, *, exclude=None, type=caseus.enums.DeathType.Normal):
+    async def on_player_died(self, client):
+        pass
+
+    async def on_player_victory(self, client):
+        pass
+
+    async def on_get_cheese(self, client, packet):
+        pass
+
+    async def kill(self, client, *, only_others=False, type=caseus.enums.DeathType.Normal):
         await self.broadcast_packet_except(
-            exclude,
+            client if only_others else None,
 
             caseus.clientbound.LegacyWrapperPacket,
 
@@ -150,6 +159,23 @@ class Exhibit(pak.AsyncPacketHandler):
         client.activity = caseus.enums.PlayerActivity.Dead
 
         await self.check_shorten_round()
+
+        if not only_others:
+            await self.on_player_died(client)
+
+    async def victory(self, client):
+        await self.broadcast_packet(
+            caseus.clientbound.PlayerVictoryPacket,
+
+            session_id = client.session_id,
+        )
+
+        client.activity = caseus.enums.PlayerActivity.Dead
+        client.cheeses  = 0
+
+        await self.check_shorten_round()
+
+        await self.on_player_victory(client)
 
     async def respawn(self, client):
         client.activity = caseus.enums.PlayerActivity.Alive
@@ -341,18 +367,9 @@ class Exhibit(pak.AsyncPacketHandler):
             )
 
     async def _on_exit_exhibit(self, client):
-        await self.kill(client, exclude=client)
+        await self.kill(client, only_others=True)
 
         await self.on_exit_exhibit(client)
-
-    async def on_player_died(self, client, packet):
-        pass
-
-    async def on_player_victory(self, client, packet):
-        pass
-
-    async def on_get_cheese(self, client, packet):
-        pass
 
     @pak.packet_listener(caseus.serverbound.PlayerMovementPacket)
     async def _on_player_movement(self, client, packet):
@@ -396,25 +413,13 @@ class Exhibit(pak.AsyncPacketHandler):
             return
 
         await self.kill(client, type=packet.type)
-        client.activity = caseus.enums.PlayerActivity.Dead
-
-        await self.on_player_died(client, packet)
 
     @pak.packet_listener(caseus.serverbound.EnterHolePacket)
     async def _on_enter_hole(self, client, packet):
         if packet.round_id != self.round_id:
             return
 
-        await self.broadcast_packet(
-            caseus.clientbound.PlayerVictoryPacket,
-
-            session_id = client.session_id,
-        )
-
-        client.activity = caseus.enums.PlayerActivity.Dead
-        client.cheeses  = 0
-
-        await self.on_player_victory(client, packet)
+        await self.victory(client)
 
     @pak.packet_listener(caseus.serverbound.GetCheesePacket)
     async def _on_get_cheese(self, client, packet):

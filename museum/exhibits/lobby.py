@@ -12,8 +12,8 @@ class Lobby(Exhibit):
     def activity_for_new_client(self, client):
         return caseus.enums.PlayerActivity.Alive
 
-    async def on_player_died(self, client, packet):
+    async def on_player_died(self, client):
         await self.respawn(client)
 
-    async def on_player_victory(self, client, packet):
+    async def on_player_victory(self, client):
         await self.respawn(client)

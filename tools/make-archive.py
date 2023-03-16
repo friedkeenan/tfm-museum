@@ -10,8 +10,10 @@ import re
 from pathlib   import Path
 from xml.etree import ElementTree
 
-XML_PATH_GLOB = "maps/**/*.xml"
+XML_PATH_GLOB       = "**/*.xml"
+MISC_URLS_PATH_GLOB = "**/misc-urls.txt"
 
+MAPS_SUBDIRECTORY = "maps"
 EXTERNAL_DIR = "external"
 
 TRANSFORMICE_IMAGE_PARENT_URL = "http://www.transformice.com/images/"
@@ -102,11 +104,24 @@ async def archive_external_map_data(data_dir, archive_dir, xml_path):
 
             tasks.append(download(archive_dir, download_url))
 
-    archived_xml_path = Path(archive_dir, xml_path.relative_to(data_dir))
+    archived_xml_path = Path(archive_dir, MAPS_SUBDIRECTORY, xml_path.relative_to(data_dir))
     await aiofiles.os.makedirs(archived_xml_path.parent, exist_ok=True)
 
     async with aiofiles.open(archived_xml_path, "w") as f:
         await asyncio.gather(f.write(xml_data), *tasks)
+
+async def archive_misc_urls(data_dir, archive_dir, urls_path):
+    # TODO: TaskGroup in Python 3.11.
+    tasks = []
+
+    async with aiofiles.open(urls_path) as f:
+        async for url in f:
+            if len(url) <= 0:
+                continue
+
+            tasks.append(download(archive_dir, url.strip()))
+
+    await asyncio.gather(*tasks)
 
 async def make_archive(data_dir, archive_dir):
     if await aiofiles.os.path.exists(archive_dir):
@@ -123,6 +138,9 @@ async def make_archive(data_dir, archive_dir):
 
     for xml_path in data_dir.glob(XML_PATH_GLOB):
         tasks.append(archive_external_map_data(data_dir, archive_dir, xml_path))
+
+    for urls_path in data_dir.glob(MISC_URLS_PATH_GLOB):
+        tasks.append(archive_misc_urls(data_dir, archive_dir, urls_path))
 
     await asyncio.gather(*tasks)
 
