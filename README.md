@@ -15,7 +15,7 @@ options:
   --log                Log packets from the client and server
 ```
 
-This will run a server implementation running on `localhost:11801` that you can connect to with the proxy loader. To enter the museum, simply get to the login page, enter a username, and press the "Submit" button; passwords are ignored. If your username is not already taken, then you will be welcomed into the museum. The rooms you enter correspond to the exhibits you can visit. For instance, going to the "armageddon" room will bring you to the "[Armageddon](https://transformice.fandom.com/wiki/Armageddon_2016)" exhibit. If you go to a room with no corresponding exhibit, you will be brought to the lobby, which is not a very exciting place.
+This will run a server implementation running on `localhost:11801` that you can connect to using the proxy loader. To enter the museum, simply get to the login page, enter a username, and press the "Submit" button; passwords are ignored. If your username is not already taken, then you will be welcomed into the museum. The rooms you enter correspond to the exhibits you can visit. For instance, going to the "armageddon" room will bring you to the "[Armageddon](https://transformice.fandom.com/wiki/Armageddon_2016)" exhibit. If you go to a room with no corresponding exhibit, you will be brought to the lobby, which is not a very exciting place.
 
 Please note that this server is **NOT** intended for a general audience. It implicitly trusts clients, and does not attempt much of any error handling, nor does it care that much about performance. Using this server for a general audience is a decidedly bad idea. Do not do it.
 
