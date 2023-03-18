@@ -24,12 +24,19 @@ class Museum(caseus.MinimalServer):
 
         exhibit = caseus.MinimalServer.Connection.SynchronizedAttr(None)
 
-        activity  = caseus.MinimalServer.Connection.SynchronizedAttr(caseus.enums.PlayerActivity.Inert)
-        cheeses   = caseus.MinimalServer.Connection.SynchronizedAttr(0)
+        activity   = caseus.MinimalServer.Connection.SynchronizedAttr(caseus.enums.PlayerActivity.Inert)
+        cheeses    = caseus.MinimalServer.Connection.SynchronizedAttr(0)
+        context_id = caseus.MinimalServer.Connection.SynchronizedAttr(0)
 
         async def wait_closed(self):
-            if self.activity is caseus.enums.PlayerActivity.Alive:
-                await self.exhibit.kill(self, only_others=True)
+            old_exhibit = self.exhibit
+            self.exhibit = None
+
+            if old_exhibit is not None:
+                await old_exhibit.new_synchronizer()
+
+                if self.activity is caseus.enums.PlayerActivity.Alive:
+                    await old_exhibit.kill(self, only_others=True)
 
             await super().wait_closed()
 
@@ -43,14 +50,23 @@ class Museum(caseus.MinimalServer):
             )
 
         async def join_room(self, room_name):
-            exhibit = self.server.find_exhbit(room_name.lower())
+            fallback, exhibit = self.server.find_exhbit(room_name.lower())
+
+            if fallback:
+                await self.write_packet(
+                    caseus.clientbound.GeneralMessagePacket,
+
+                    message = f"<B><ROSE>Could not find exhibit '{room_name}', falling back to {exhibit.room_name}...</ROSE></B>"
+                )
+
             if exhibit is self.exhibit:
                 return
 
-            if self.exhibit is not None:
-                await self.exhibit._on_exit_exhibit(self)
-
+            old_exhibit  = self.exhibit
             self.exhibit = exhibit
+
+            if old_exhibit is not None:
+                await old_exhibit._on_exit_exhibit(self)
 
             await self.exhibit._on_enter_exhibit(self)
 
@@ -113,19 +129,20 @@ class Museum(caseus.MinimalServer):
         # TODO: Have a way to list exhibits
         # to use in the room list menu.
 
-        # Remove our package from '__name__'.
-        parent_package = __name__.rsplit(".", 1)[0]
+        fallback = False
 
         try:
-            module = importlib.import_module(f".exhibits.{name}", package=parent_package)
+            module = importlib.import_module(f".exhibits.{name}", package=__package__)
 
         except ModuleNotFoundError:
-            module = fallback_exhibit
+            module   = fallback_exhibit
+            fallback = True
 
         if not hasattr(module, "_available_exhibit"):
             module = fallback_exhibit
+            fallback = True
 
-        return self._find_or_add_exhibit(module._available_exhibit)
+        return fallback, self._find_or_add_exhibit(module._available_exhibit)
 
     async def data(self, path, *, binary=False):
         path = Path(self.data_dir, path)
@@ -206,3 +223,45 @@ class Museum(caseus.MinimalServer):
             return
 
         await client.exhibit._listen_to_packet(client, packet, outgoing=True)
+
+    @pak.packet_listener(caseus.serverbound.LegacyWrapperPacket)
+    async def _dispatch_to_exhibit_legacy(self, client, packet):
+        if client.exhibit is None:
+            return
+
+        await client.exhibit._listen_to_packet(client, packet.nested, outgoing=False)
+
+    @pak.packet_listener(caseus.clientbound.LegacyWrapperPacket, outgoing=True)
+    async def _dispatch_outgoing_to_exhibit_legacy(self, client, packet):
+        if client.exhibit is None:
+            return
+
+        await client.exhibit._listen_to_packet(client, packet.nested, outgoing=True)
+
+    @pak.packet_listener(caseus.serverbound.TribulleWrapperPacket)
+    async def _dispatch_to_exhibit_tribulle(self, client, packet):
+        if client.exhibit is None:
+            return
+
+        await client.exhibit._listen_to_packet(client, packet.nested, outgoing=False)
+
+    @pak.packet_listener(caseus.clientbound.TribulleWrapperPacket, outgoing=True)
+    async def _dispatch_outgoing_to_exhibit_tribulle(self, client, packet):
+        if client.exhibit is None:
+            return
+
+        await client.exhibit._listen_to_packet(client, packet.nested, outgoing=True)
+
+    @pak.packet_listener(caseus.serverbound.ExtensionWrapperPacket)
+    async def _dispatch_to_exhibit_extension(self, client, packet):
+        if client.exhibit is None:
+            return
+
+        await client.exhibit._listen_to_packet(client, packet.nested, outgoing=False)
+
+    @pak.packet_listener(caseus.clientbound.ExtensionWrapperPacket, outgoing=True)
+    async def _dispatch_outgoing_to_exhibit_extension(self, client, packet):
+        if client.exhibit is None:
+            return
+
+        await client.exhibit._listen_to_packet(client, packet.nested, outgoing=True)

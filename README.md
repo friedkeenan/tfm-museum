@@ -23,7 +23,8 @@ Please note that this server is **NOT** intended for a general audience. It impl
 
 The currently available exhibits are:
 
-- Armageddon
+- [Armageddon](https://transformice.fandom.com/wiki/Armageddon_2016)
+- [Dragon](https://transformice.fandom.com/wiki/Dragon_2016)
 
 ## Miscellaneous Tools
 

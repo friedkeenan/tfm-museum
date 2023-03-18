@@ -33,11 +33,11 @@ class Armageddon(AdventureExhibit):
     FEATHER_TOTAL = 32
 
     async def add_feather(self, client, id):
-        await self.add_collectable(
+        await self.add_collectible(
             client,
 
             individual_id  = id,
-            collectable_id = self.FEATHER_ID,
+            collectible_id = self.FEATHER_ID,
             x              = self.FEATHER_X,
             y              = self.FEATHER_Y[id],
         )
@@ -96,7 +96,7 @@ class Armageddon(AdventureExhibit):
 
         await self.report_feather_progress_to(client)
 
-    async def on_get_collectable(self, client, packet):
+    async def on_get_collectible(self, client, packet):
         await self.set_can_collect(client, False)
 
         await self.add_carrying(

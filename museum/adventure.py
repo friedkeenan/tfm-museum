@@ -13,13 +13,13 @@ class AdventureExhibit(Exhibit):
     def _can_be_available(cls):
         return super()._can_be_available() and cls.adventure_id is not None
 
-    async def add_collectable(self, client, *, individual_id, collectable_id, x, y):
+    async def add_collectible(self, client, *, individual_id, collectible_id, x, y):
         await client.write_packet(
-            caseus.clientbound.AddCollectablePacket,
+            caseus.clientbound.AddCollectiblePacket,
 
             adventure_id   = self.adventure_id,
             individual_id  = individual_id,
-            collectable_id = collectable_id,
+            collectible_id = collectible_id,
             x              = x,
             y              = y,
         )
@@ -65,7 +65,7 @@ class AdventureExhibit(Exhibit):
     async def on_adventure_action(self, client, packet):
         raise NotImplementedError
 
-    async def on_get_collectable(self, client, packet):
+    async def on_get_collectible(self, client, packet):
         raise NotImplementedError
 
     async def on_enter_area(self, client, packet):
@@ -78,12 +78,12 @@ class AdventureExhibit(Exhibit):
 
         await self.on_adventure_action(client, packet)
 
-    @pak.packet_listener(caseus.serverbound.GetCollectablePacket)
-    async def _on_get_collectable(self, client, packet):
+    @pak.packet_listener(caseus.serverbound.GetCollectiblePacket)
+    async def _on_get_collectible(self, client, packet):
         if packet.adventure_id != self.adventure_id:
             return
 
-        await self.on_get_collectable(client, packet)
+        await self.on_get_collectible(client, packet)
 
     @pak.packet_listener(caseus.serverbound.EnterAdventureAreaPacket)
     async def _on_enter_area(self, client, packet):

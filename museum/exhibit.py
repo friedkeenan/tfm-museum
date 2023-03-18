@@ -26,6 +26,8 @@ class Exhibit(pak.AsyncPacketHandler):
 
     round_duration = 120
 
+    has_synchronizer = False
+
     ROUND_SHORTEN_TIME = 20
 
     @classmethod
@@ -37,7 +39,9 @@ class Exhibit(pak.AsyncPacketHandler):
 
         self.museum = museum
 
-        self.round_id = 0
+        self.round_id     = 0
+        self.synchronizer = None
+        self.anchors      = []
 
         self._map_xml_data = None
 
@@ -60,8 +64,14 @@ class Exhibit(pak.AsyncPacketHandler):
         super().register_packet_listener(listener, *packet_types, outgoing=outgoing, **flags)
 
     async def _listen_to_packet(self, client, packet, *, outgoing):
+        listeners = self.listeners_for_packet(packet, outgoing=outgoing)
+        if len(listeners) <= 0:
+            return
+
+        packet = packet.immutable_copy()
+
         async with self.listener_task_group(listen_sequentially=False) as group:
-            for listener in self.listeners_for_packet(packet, outgoing=outgoing):
+            for listener in listeners:
                 group.create_task(listener(client, packet))
 
     @property
@@ -98,7 +108,7 @@ class Exhibit(pak.AsyncPacketHandler):
             shaman_color   = 0,
             unk_int_15     = 0,
             name_color     = -1,
-            context_id     = 0,
+            context_id     = client.context_id,
         )
 
     async def broadcast_packet(self, packet_cls, **fields):
@@ -178,7 +188,8 @@ class Exhibit(pak.AsyncPacketHandler):
         await self.on_player_victory(client)
 
     async def respawn(self, client):
-        client.activity = caseus.enums.PlayerActivity.Alive
+        client.activity   = caseus.enums.PlayerActivity.Alive
+        client.context_id = (client.context_id + 1) % 20
 
         await self.broadcast_packet(
             caseus.clientbound.UpdatePlayerListPacket,
@@ -189,18 +200,18 @@ class Exhibit(pak.AsyncPacketHandler):
 
     async def set_can_collect(self, client, can_collect):
         await client.write_packet(
-            caseus.clientbound.CollectableActionPacket,
+            caseus.clientbound.CollectibleActionPacket,
 
-            action = caseus.clientbound.CollectableActionPacket.SetCanCollect(
+            action = caseus.clientbound.CollectibleActionPacket.SetCanCollect(
                 can_collect = can_collect,
             ),
         )
 
     async def add_carrying(self, client, image_path, offset_x, offset_y, foreground, size_percentage=100, angle=0):
         await self.broadcast_packet(
-            caseus.clientbound.CollectableActionPacket,
+            caseus.clientbound.CollectibleActionPacket,
 
-            action = caseus.clientbound.CollectableActionPacket.AddCarrying(
+            action = caseus.clientbound.CollectibleActionPacket.AddCarrying(
                 session_id      = 0 if client is None else client.session_id,
                 image_path      = image_path,
                 offset_x        = offset_x,
@@ -213,10 +224,35 @@ class Exhibit(pak.AsyncPacketHandler):
 
     async def clear_carrying(self, client):
         await self.broadcast_packet(
-            caseus.clientbound.CollectableActionPacket,
+            caseus.clientbound.CollectibleActionPacket,
 
-            action = caseus.clientbound.CollectableActionPacket.ClearCarrying(
+            action = caseus.clientbound.CollectibleActionPacket.ClearCarrying(
                 session_id = 0 if client is None else client.session_id,
+            ),
+        )
+
+    def _new_synchronizer(self):
+        if not self.has_synchronizer or len(self.clients) <= 0:
+            return None
+
+        return self.clients[0]
+
+    async def new_synchronizer(self, *, spawn_initial_objects=False):
+        new_synchronizer = self._new_synchronizer()
+
+        if self.synchronizer is new_synchronizer:
+            return
+
+        self.synchronizer = new_synchronizer
+        if new_synchronizer is None:
+            return
+
+        await self.broadcast_packet(
+            caseus.clientbound.LegacyWrapperPacket,
+
+            nested = caseus.clientbound.SetSynchronizerPacket(
+                session_id            = new_synchronizer.session_id,
+                spawn_initial_objects = spawn_initial_objects,
             ),
         )
 
@@ -230,7 +266,7 @@ class Exhibit(pak.AsyncPacketHandler):
 
         return int(self._round_end - time)
 
-    async def send_round(self, client, *, players=None, duration=None):
+    async def send_round(self, client, *, players=None, spawn_initial_objects=False, duration=None):
         await client.write_packet(
             caseus.clientbound.NewRoundPacket,
 
@@ -253,6 +289,16 @@ class Exhibit(pak.AsyncPacketHandler):
             players = players,
         )
 
+        if self.synchronizer is not None:
+            await client.write_packet(
+                caseus.clientbound.LegacyWrapperPacket,
+
+                nested = caseus.clientbound.SetSynchronizerPacket(
+                    session_id            = self.synchronizer.session_id,
+                    spawn_initial_objects = spawn_initial_objects,
+                ),
+            )
+
         if duration is None:
             duration = self.round_time()
 
@@ -268,8 +314,8 @@ class Exhibit(pak.AsyncPacketHandler):
         loop = asyncio.get_running_loop()
 
         try:
-            while True:
-                while loop.time() < self._round_end:
+            while self.museum.is_serving():
+                while self.museum.is_serving() and loop.time() < self._round_end:
                     await pak.util.yield_exec()
 
                 await self.start_new_round()
@@ -300,18 +346,23 @@ class Exhibit(pak.AsyncPacketHandler):
             self._round_end = asyncio.get_running_loop().time() + self.ROUND_SHORTEN_TIME
 
     async def start_new_round(self):
-        self.round_id = (self.round_id + 1) % 127
+        self.round_id     = (self.round_id + 1) % 127
+        self.synchronizer = self._new_synchronizer()
+        self.anchors      = []
 
         players = []
         for client in self.clients:
-            client.activity = caseus.enums.PlayerActivity.Alive
-            client.cheeses  = 0
+            client.activity   = caseus.enums.PlayerActivity.Alive
+            client.cheeses    = 0
+            client.context_id = (client.context_id + 1) % 20
+
+            client.has_sent_anchors = True
 
             players.append(self.player_description(client))
 
         # TODO: TaskGroup in Python 3.11.
         await asyncio.gather(*[
-            self.send_round(client, players=players, duration=self.round_duration)
+            self.send_round(client, players=players, spawn_initial_objects=True, duration=self.round_duration)
 
             for client in self.clients
         ])
@@ -348,6 +399,8 @@ class Exhibit(pak.AsyncPacketHandler):
 
         client.activity = self.activity_for_new_client(client)
 
+        client.has_sent_anchors = False
+
         await self.on_enter_exhibit(client)
 
         # No clients before.
@@ -367,9 +420,66 @@ class Exhibit(pak.AsyncPacketHandler):
             )
 
     async def _on_exit_exhibit(self, client):
+        if client is self.synchronizer:
+            # Stop the client from thinking it's a synchronizer.
+            await client.write_packet(
+                caseus.clientbound.LegacyWrapperPacket,
+
+                nested = caseus.clientbound.SetSynchronizerPacket(
+                    session_id            = 0,
+                    spawn_initial_objects = False,
+                ),
+            )
+
+        await self.new_synchronizer()
         await self.kill(client, only_others=True)
 
         await self.on_exit_exhibit(client)
+
+    @pak.packet_listener(caseus.serverbound.ObjectSyncPacket)
+    async def _on_object_sync(self, client, packet):
+        if client is not self.synchronizer:
+            return
+
+        if packet.round_id != self.round_id:
+            return
+
+        await self.broadcast_packet_except(
+            client,
+
+            caseus.clientbound.ObjectSyncPacket,
+
+            objects = [obj.clientbound(add_if_missing=True) for obj in packet.objects]
+        )
+
+        for client in self.clients:
+            if client.has_sent_anchors:
+                continue
+
+            await client.write_packet(
+                caseus.clientbound.LegacyWrapperPacket,
+
+                nested = caseus.clientbound.AddAnchorsPacket(
+                    self.anchors
+                ),
+            )
+
+            client.has_sent_anchors = True
+
+    @pak.packet_listener(caseus.serverbound.AddAnchorsPacket)
+    async def _on_add_anchors(self, client, packet):
+        if client is not self.synchronizer:
+            return
+
+        self.anchors.extend(packet.anchors)
+
+        await self.broadcast_packet(
+            caseus.clientbound.LegacyWrapperPacket,
+
+            nested = caseus.clientbound.AddAnchorsPacket(
+                packet.anchors,
+            ),
+        )
 
     @pak.packet_listener(caseus.serverbound.PlayerMovementPacket)
     async def _on_player_movement(self, client, packet):
@@ -395,12 +505,12 @@ class Exhibit(pak.AsyncPacketHandler):
             rotation_info       = packet.rotation_info,
         )
 
-    @pak.packet_listener(caseus.serverbound.PlayerAnimationPacket)
+    @pak.packet_listener(caseus.serverbound.PlayerActionPacket)
     async def _on_player_animation(self, client, packet):
         await self.broadcast_packet_except(
             client,
 
-            caseus.clientbound.PlayerAnimationPacket,
+            caseus.clientbound.PlayerActionPacket,
 
             session_id = client.session_id,
             animation  = packet.animation,
@@ -424,6 +534,9 @@ class Exhibit(pak.AsyncPacketHandler):
     @pak.packet_listener(caseus.serverbound.GetCheesePacket)
     async def _on_get_cheese(self, client, packet):
         if packet.round_id != self.round_id:
+            return
+
+        if packet.context_id != client.context_id:
             return
 
         client.cheeses += 1
