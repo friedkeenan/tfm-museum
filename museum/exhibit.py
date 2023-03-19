@@ -542,6 +542,14 @@ class Exhibit(pak.AsyncPacketHandler):
 
         await self.on_exit_exhibit(client)
 
+    @pak.packet_listener(caseus.serverbound.CommandPacket)
+    async def _on_command(self, client, packet):
+        # TODO: More scalable command system?
+
+        match packet.command.split():
+            case ["mort", *_]:
+                await self.kill(client)
+
     @pak.packet_listener(caseus.serverbound.ObjectSyncPacket)
     async def _on_object_sync(self, client, packet):
         if client is not self.synchronizer:
@@ -756,7 +764,16 @@ class Exhibit(pak.AsyncPacketHandler):
             mice_collidable  = True,
         )
 
-    # TODO: Emote and emoticon forwarding.
+    @pak.packet_listener(caseus.serverbound.ShowEmoticonPacket)
+    async def _on_show_emoticon(self, client, packet):
+        await self.broadcast_packet_except(
+            client,
+
+            caseus.clientbound.ShowEmoticonPacket,
+
+            session_id = client.session_id,
+            emoticon   = packet.emoticon,
+        )
 
     @pak.packet_listener(caseus.serverbound.PlayEmotePacket)
     async def _on_play_emote(self, client, packet):
