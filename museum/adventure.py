@@ -63,13 +63,13 @@ class AdventureExhibit(Exhibit):
         )
 
     async def on_adventure_action(self, client, packet):
-        raise NotImplementedError
+        pass
 
     async def on_get_collectible(self, client, packet):
-        raise NotImplementedError
+        pass
 
     async def on_enter_area(self, client, packet):
-        raise NotImplementedError
+        pass
 
     @pak.packet_listener(caseus.serverbound.AdventureActionPacket)
     async def _on_adventure_action(self, client, packet):

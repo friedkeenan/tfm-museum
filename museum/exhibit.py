@@ -3,6 +3,7 @@ import caseus
 
 import asyncio
 import inspect
+import random
 
 from public import public
 
@@ -26,9 +27,14 @@ class Exhibit(pak.AsyncPacketHandler):
 
     round_duration = 120
 
+    has_shaman       = False
     has_synchronizer = False
 
+    shaman_color = 0x95D9D6
+
     ROUND_SHORTEN_TIME = 20
+
+    _UNSPECIFIED = pak.util.UniqueSentinel("UNSPECIFIED")
 
     @classmethod
     def _can_be_available(cls):
@@ -40,11 +46,13 @@ class Exhibit(pak.AsyncPacketHandler):
         self.museum = museum
 
         self.round_id     = 0
+        self.shaman       = None
         self.synchronizer = None
         self.anchors      = []
 
         self._map_xml_data = None
 
+        self._has_player_won         = False
         self._round_end              = 0
         self._check_round_ended_task = None
 
@@ -87,14 +95,30 @@ class Exhibit(pak.AsyncPacketHandler):
         return sum(1 if client.activity is not caseus.enums.PlayerActivity.Inert else 0 for client in self.clients)
 
     @property
-    def num_alive_clients(self):
-        return sum(1 if client.activity is caseus.enums.PlayerActivity.Alive else 0 for client in self.clients)
+    def alive_clients(self):
+        return [
+            client
+
+            for client in self.museum.main_clients
+
+            if client.exhibit is self and client.activity is caseus.enums.PlayerActivity.Alive
+        ]
+
+    def client_with_session_id(self, session_id):
+        for client in self.museum.main_clients:
+            if client.exhibit is not self:
+                continue
+
+            if client.session_id == session_id:
+                return client
+
+        return None
 
     def player_description(self, client):
         return dict(
             username       = client.username,
             session_id     = client.session_id,
-            is_shaman      = False,
+            is_shaman      = client.is_shaman,
             activity       = client.activity,
             score          = 0,
             cheeses        = client.cheeses,
@@ -105,7 +129,7 @@ class Exhibit(pak.AsyncPacketHandler):
             outfit_code    = "1;0,0,0,0,0,0",
             unk_boolean_12 = False,
             mouse_color    = 0,
-            shaman_color   = 0,
+            shaman_color   = self.shaman_color,
             unk_int_15     = 0,
             name_color     = -1,
             context_id     = client.context_id,
@@ -185,6 +209,8 @@ class Exhibit(pak.AsyncPacketHandler):
 
         await self.check_shorten_round()
 
+        self._has_player_won = True
+
         await self.on_player_victory(client)
 
     async def respawn(self, client):
@@ -207,7 +233,46 @@ class Exhibit(pak.AsyncPacketHandler):
             ),
         )
 
-    async def add_carrying(self, client, image_path, offset_x, offset_y, foreground, size_percentage=100, angle=0):
+    async def add_carrying_for_individual(
+        self,
+        client,
+        *,
+        carrying_client = _UNSPECIFIED,
+        image_path,
+        offset_x,
+        offset_y,
+        foreground,
+        size_percentage = 100,
+        angle = 0,
+    ):
+        if carrying_client is self._UNSPECIFIED:
+            carrying_client = client
+
+        await client.write_packet(
+            caseus.clientbound.CollectibleActionPacket,
+
+            action = caseus.clientbound.CollectibleActionPacket.AddCarrying(
+                session_id      = 0 if carrying_client is None else carrying_client.session_id,
+                image_path      = image_path,
+                offset_x        = offset_x,
+                offset_y        = offset_y,
+                foreground      = foreground,
+                size_percentage = size_percentage,
+                angle           = angle,
+            ),
+        )
+
+    async def add_carrying(
+        self,
+        client,
+        *,
+        image_path,
+        offset_x,
+        offset_y,
+        foreground,
+        size_percentage = 100,
+        angle = 0,
+    ):
         await self.broadcast_packet(
             caseus.clientbound.CollectibleActionPacket,
 
@@ -231,9 +296,27 @@ class Exhibit(pak.AsyncPacketHandler):
             ),
         )
 
+    def _new_shaman(self):
+        clients = self.clients
+
+        if not self.has_shaman or len(clients) <= 0:
+            return None
+
+        if len(clients) == 1:
+            return clients[0]
+
+        while True:
+            new_shaman = random.choice(clients)
+
+            if new_shaman is not self.shaman:
+                return new_shaman
+
     def _new_synchronizer(self):
         if not self.has_synchronizer or len(self.clients) <= 0:
             return None
+
+        if self.shaman is not None:
+            return self.shaman
 
         return self.clients[0]
 
@@ -278,8 +361,6 @@ class Exhibit(pak.AsyncPacketHandler):
             category    = self.map_category,
         )
 
-        await self.setup_round(client)
-
         if players is None:
             players = [self.player_description(client) for client in self.clients]
 
@@ -308,6 +389,18 @@ class Exhibit(pak.AsyncPacketHandler):
             seconds = duration,
         )
 
+        if self.shaman is None:
+            await client.write_packet(caseus.clientbound.ShamanInfoPacket)
+        else:
+            await client.write_packet(
+                caseus.clientbound.ShamanInfoPacket,
+
+                blue_session_id = self.shaman.session_id,
+                blue_level      = 1,
+            )
+
+        await self.setup_round(client)
+
     async def _check_round_ended(self):
         # TODO: Make this use a 'Timeout' in Python 3.11?
 
@@ -324,15 +417,19 @@ class Exhibit(pak.AsyncPacketHandler):
             return
 
     async def check_shorten_round(self):
-        num_alive_clients = self.num_alive_clients
+        num_alive_clients = len(self.alive_clients)
 
-        if num_alive_clients > 2:
-            return
-
-        if num_alive_clients == 0:
+        if num_alive_clients <= 0:
             # Let the check round ended task handle the new round.
             self._round_end = 0
 
+            return
+
+        if (
+            (not self.has_shaman or any(client.is_shaman for client in self.alive_clients)) and
+
+            num_alive_clients > 2
+        ):
             return
 
         new_round_end = asyncio.get_running_loop().time() + self.ROUND_SHORTEN_TIME
@@ -347,14 +444,20 @@ class Exhibit(pak.AsyncPacketHandler):
 
     async def start_new_round(self):
         self.round_id     = (self.round_id + 1) % 127
+        self.shaman       = self._new_shaman()
         self.synchronizer = self._new_synchronizer()
         self.anchors      = []
+
+        self._has_player_won = False
 
         players = []
         for client in self.clients:
             client.activity   = caseus.enums.PlayerActivity.Alive
             client.cheeses    = 0
             client.context_id = (client.context_id + 1) % 20
+
+            if client is self.shaman:
+                client.is_shaman = True
 
             client.has_sent_anchors = True
 
@@ -481,6 +584,12 @@ class Exhibit(pak.AsyncPacketHandler):
             ),
         )
 
+        await self.broadcast_packet(
+            caseus.clientbound.PlayShamanInvocationSoundPacket,
+
+            shaman_object_id = -1,
+        )
+
     @pak.packet_listener(caseus.serverbound.PlayerMovementPacket)
     async def _on_player_movement(self, client, packet):
         if packet.round_id != self.round_id:
@@ -549,5 +658,99 @@ class Exhibit(pak.AsyncPacketHandler):
         )
 
         await self.on_get_cheese(client, packet)
+
+    @pak.packet_listener(caseus.serverbound.ShamanObjectPreviewPacket)
+    async def _on_shaman_object_preview(self, client, packet):
+        # The coordinate ranges of the clientbound packet
+        # are not the same as the serverbound ranges.
+
+        if packet.x > 32767:
+            return
+
+        if packet.x < -32768:
+            return
+
+        if packet.y > 32767:
+            return
+
+        if packet.y < -32768:
+            return
+
+        await self.broadcast_packet_except(
+            client,
+
+            caseus.clientbound.ShamanObjectPreviewPacket,
+
+            session_id       = client.session_id,
+            shaman_object_id = packet.shaman_object_id,
+            x                = packet.x,
+            y                = packet.y,
+            angle            = packet.angle,
+            child_offsets    = packet.child_offsets,
+            is_spawning      = packet.is_spawning,
+        )
+
+    @pak.packet_listener(caseus.serverbound.RemoveShamanObjectPreviewPacket)
+    async def _on_remove_shaman_object_preview(self, client, packet):
+        await self.broadcast_packet_except(
+            client,
+
+            caseus.clientbound.RemoveShamanObjectPreviewPacket,
+
+            session_id = client.session_id,
+        )
+
+    @pak.packet_listener(caseus.serverbound.AddShamanObjectPacket)
+    async def _add_shaman_object(self, client, packet):
+        if packet.round_id != self.round_id:
+            return
+
+        await self.broadcast_packet_except(
+            client,
+
+            caseus.clientbound.AddShamanObjectPacket,
+
+            object_id        = packet.object_id,
+            shaman_object_id = packet.shaman_object_id,
+            x                = packet.x,
+            y                = packet.y,
+            angle            = packet.angle,
+            velocity_x       = packet.velocity_x,
+            velocity_y       = packet.velocity_y,
+            mice_collidable  = packet.mice_collidable,
+        )
+
+        if packet.spawned_by_player:
+            await self.broadcast_packet(
+                caseus.clientbound.PlayShamanInvocationSoundPacket,
+
+                shaman_object_id = caseus.game.shaman_object_id_parts(packet.shaman_object_id)[0],
+            )
+
+    @pak.packet_listener(caseus.serverbound.UseIceCubePacket)
+    async def _on_use_ice_cube(self, client, packet):
+        if not self._has_player_won:
+            return
+
+        affected_client = self.client_with_session_id(packet.session_id)
+        if affected_client is client:
+            return
+
+        # TODO: Check if client hasn't run out of ice cubes.
+
+        if affected_client.is_shaman:
+            return
+
+        await self.kill(affected_client)
+
+        await self.synchronizer.write_packet(
+            caseus.clientbound.AddShamanObjectPacket,
+
+            object_id        = -1,
+            shaman_object_id = 54,
+            x                = packet.x,
+            y                = packet.y,
+            mice_collidable  = True,
+        )
 
     # TODO: Emote and emoticon forwarding.

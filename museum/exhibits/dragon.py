@@ -28,12 +28,13 @@ class Dragon(AdventureExhibit):
     # could be added to the museum, but I'm not sure that
     # that is necessarily within the scope of reliving the
     # event an exhibit is for.
-    REWWARD_ID = 800
+    REWARD_ID = 800
 
     async def setup_round(self, client):
         await self.add_collectible(
             client,
 
+            # NOTE: Individual ID not based on anything.
             individual_id  = 0,
             collectible_id = self.LANTERN_ID,
             x              = self.LANTERN_X,
@@ -46,6 +47,6 @@ class Dragon(AdventureExhibit):
 
             session_id = client.session_id,
             item       = caseus.clientbound.RaiseItemPacket.InventoryItem(
-                item_id = self.REWWARD_ID,
+                item_id = self.REWARD_ID,
             ),
         )

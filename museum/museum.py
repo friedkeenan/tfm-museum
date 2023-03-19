@@ -24,6 +24,7 @@ class Museum(caseus.MinimalServer):
 
         exhibit = caseus.MinimalServer.Connection.SynchronizedAttr(None)
 
+        is_shaman  = caseus.MinimalServer.Connection.SynchronizedAttr(False)
         activity   = caseus.MinimalServer.Connection.SynchronizedAttr(caseus.enums.PlayerActivity.Inert)
         cheeses    = caseus.MinimalServer.Connection.SynchronizedAttr(0)
         context_id = caseus.MinimalServer.Connection.SynchronizedAttr(0)
@@ -69,6 +70,9 @@ class Museum(caseus.MinimalServer):
                 await old_exhibit._on_exit_exhibit(self)
 
             await self.exhibit._on_enter_exhibit(self)
+
+        def __repr__(self):
+            return f"{type(self).__qualname__}(username={repr(self.username)})"
 
     def __init__(
         self,

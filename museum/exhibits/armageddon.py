@@ -13,12 +13,13 @@ class Armageddon(AdventureExhibit):
     FEATHER_ID   = 9
     FEATHER_PATH = "x_transformice/x_aventure/x_recoltables/x_9.png"
 
-    # NOTE: Educated guess.
-    FEATHER_OFFSET = (-28, -22)
+    # NOTE: Educated guesses.
+    FEATHER_OFFSET_X = -28
+    FEATHER_OFFSET_Y = -22
 
     # NOTE: Educated guesses.
     FEATHER_X = 50
-    FEATHER_Y = [208 - 11 - 18 + 1, 114 - 25 - 18 - 1]
+    FEATHER_Y = [180, 70]
 
     # NOTE: Educated guesses.
     FEATHER_DEPOSIT_X      = 370
@@ -96,6 +97,24 @@ class Armageddon(AdventureExhibit):
 
         await self.report_feather_progress_to(client)
 
+        for other_client in self.clients:
+            if other_client is client:
+                continue
+
+            if other_client.carrying_id is None:
+                continue
+
+            await self.add_carrying_for_individual(
+                client,
+
+                carrying_client = other_client,
+
+                image_path = self.FEATHER_PATH,
+                offset_x   = self.FEATHER_OFFSET_X,
+                offset_y   = self.FEATHER_OFFSET_Y,
+                foreground = False,
+            )
+
     async def on_get_collectible(self, client, packet):
         await self.set_can_collect(client, False)
 
@@ -103,8 +122,8 @@ class Armageddon(AdventureExhibit):
             client,
 
             image_path = self.FEATHER_PATH,
-            offset_x   = self.FEATHER_OFFSET[0],
-            offset_y   = self.FEATHER_OFFSET[1],
+            offset_x   = self.FEATHER_OFFSET_X,
+            offset_y   = self.FEATHER_OFFSET_Y,
             foreground = False,
         )
 
