@@ -25,6 +25,7 @@ The currently available exhibits are:
 
 - [Armageddon](https://transformice.fandom.com/wiki/Armageddon_2016)
 - [Dragon](https://transformice.fandom.com/wiki/Dragon_2016)
+- [Ninja](https://transformice.fandom.com/wiki/Ninja_2016)
 
 ## Miscellaneous Tools
 
