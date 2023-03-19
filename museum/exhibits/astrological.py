@@ -12,6 +12,8 @@ class Astrological(AdventureExhibit):
     map_code     = 2000
     map_xml_path = "Astrological/Food.xml"
 
+    round_duration = 90
+
     has_synchronizer = True
 
     CHEESE_IDS = range(2212, 2224)
