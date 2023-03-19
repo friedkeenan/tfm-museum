@@ -24,6 +24,7 @@ Please note that this server is **NOT** intended for a general audience. It impl
 The currently available exhibits are:
 
 - [Armageddon](https://transformice.fandom.com/wiki/Armageddon_2016)
+- [Astrological](https://transformice.fandom.com/wiki/Astrological_2016)
 - [Dragon](https://transformice.fandom.com/wiki/Dragon_2016)
 - [Ninja](https://transformice.fandom.com/wiki/Ninja_2016)
 

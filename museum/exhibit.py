@@ -176,6 +176,9 @@ class Exhibit(pak.AsyncPacketHandler):
     async def on_get_cheese(self, client, packet):
         pass
 
+    async def on_multi_emote(self, client, packet):
+        pass
+
     async def kill(self, client, *, only_others=False, type=caseus.enums.DeathType.Normal):
         await self.broadcast_packet_except(
             client if only_others else None,
@@ -754,3 +757,51 @@ class Exhibit(pak.AsyncPacketHandler):
         )
 
     # TODO: Emote and emoticon forwarding.
+
+    @pak.packet_listener(caseus.serverbound.PlayEmotePacket)
+    async def _on_play_emote(self, client, packet):
+        if packet.partner_session_id == -1:
+            await self.broadcast_packet_except(
+                client,
+
+                caseus.clientbound.PlayEmotePacket,
+
+                session_id = client.session_id,
+                emote      = packet.emote,
+                argument   = packet.argument,
+                from_lua   = False,
+            )
+
+            return
+
+        await self.broadcast_packet_except(
+            client,
+
+            caseus.clientbound.PlayEmotePacket,
+
+            session_id = client.session_id,
+            emote      = packet.emote,
+            argument   = packet.argument,
+            from_lua   = False,
+        )
+
+        await self.broadcast_packet(
+            caseus.clientbound.PlayEmotePacket,
+
+            session_id = packet.partner_session_id,
+            emote      = packet.emote.partner_emote,
+            argument   = packet.argument,
+            from_lua   = False,
+        )
+
+        if packet.emote is caseus.enums.Emote.RockPaperScissors_1:
+            await self.broadcast_packet(
+                caseus.clientbound.SetRockPaperScissorsChoicesPacket,
+
+                first_session_id  = client.session_id,
+                first_choice      = caseus.enums.RockPaperScissorsChoice.random(),
+                second_session_id = packet.partner_session_id,
+                second_choice     = caseus.enums.RockPaperScissorsChoice.random(),
+            )
+
+        await self.on_multi_emote(client, packet)

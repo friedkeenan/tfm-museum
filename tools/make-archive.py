@@ -116,10 +116,12 @@ async def archive_misc_urls(data_dir, archive_dir, urls_path):
 
     async with aiofiles.open(urls_path) as f:
         async for url in f:
+            url = url.strip()
+
             if len(url) <= 0:
                 continue
 
-            tasks.append(download(archive_dir, url.strip()))
+            tasks.append(download(archive_dir, url))
 
     await asyncio.gather(*tasks)
 
