@@ -822,3 +822,12 @@ class Exhibit(pak.AsyncPacketHandler):
             )
 
         await self.on_multi_emote(client, packet)
+
+    @pak.packet_listener(caseus.serverbound.RoomMessagePacket)
+    async def _on_room_message(self, client, packet):
+        await self.broadcast_packet(
+            caseus.clientbound.RoomMessagePacket,
+
+            username = client.username,
+            message  = packet.message,
+        )
