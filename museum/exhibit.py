@@ -19,6 +19,15 @@ def available(cls):
     return cls
 
 @public
+def round_time_listener(passed_time):
+    def decorator(listener):
+        listener._round_time_listener_passed_time = passed_time
+
+        return listener
+
+    return decorator
+
+@public
 class Exhibit(pak.AsyncPacketHandler):
     map_code     = None
     map_xml_path = None
@@ -53,20 +62,30 @@ class Exhibit(pak.AsyncPacketHandler):
         self._map_xml_data = None
 
         self._has_player_won         = False
-        self._round_end              = 0
-        self._check_round_ended_task = None
+
+        self._round_time_listeners        = {}
+        self._active_round_time_listeners = {}
+        self._round_end           = 0
+
+        self._check_round_timings_task = None
+
+        for _, attr in inspect.getmembers(self, lambda x: hasattr(x, "_round_time_listener_passed_time")):
+            self.register_round_time_listener(attr._round_time_listener_passed_time, attr)
 
     def close(self):
-        if self._check_round_ended_task is not None:
-            self._check_round_ended_task.cancel()
+        if self._check_round_timings_task is not None:
+            self._check_round_timings_task.cancel()
 
     async def wait_closed(self):
-        if self._check_round_ended_task is not None:
-            await self._check_round_ended_task
+        if self._check_round_timings_task is not None:
+            await self._check_round_timings_task
 
-            self._check_round_ended_task = None
+            self._check_round_timings_task = None
 
         await self.end_listener_tasks()
+
+    def register_round_time_listener(self, passed_time, *listeners):
+        self._round_time_listeners.setdefault(passed_time, []).extend(listeners)
 
     def register_packet_listener(self, listener, *packet_types, outgoing=False, **flags):
         super().register_packet_listener(listener, *packet_types, outgoing=outgoing, **flags)
@@ -299,6 +318,21 @@ class Exhibit(pak.AsyncPacketHandler):
             ),
         )
 
+    async def raise_inventory_item(self, client, item_id):
+        if isinstance(client, int):
+            session_id = client
+        else:
+            session_id = client.session_id
+
+        await self.broadcast_packet(
+            caseus.clientbound.RaiseItemPacket,
+
+            session_id = session_id,
+            item       = caseus.clientbound.RaiseItemPacket.InventoryItem(
+                item_id = item_id,
+            ),
+        )
+
     def _new_shaman(self):
         clients = self.clients
 
@@ -404,17 +438,48 @@ class Exhibit(pak.AsyncPacketHandler):
 
         await self.setup_round(client)
 
-    async def _check_round_ended(self):
+    def _setup_round_timings(self):
+        if self.round_duration <= 0:
+            return
+
+        time = asyncio.get_running_loop().time()
+
+        self._round_end = time + self.round_duration
+
+        self._active_round_time_listeners = {
+            time + passed_time: listeners for passed_time, listeners in self._round_time_listeners.items()
+        }
+
+        if self._check_round_timings_task is None:
+            self._check_round_timings_task = asyncio.create_task(self._check_round_timings())
+
+    async def _check_round_timings(self):
         # TODO: Make this use a 'Timeout' in Python 3.11?
 
         loop = asyncio.get_running_loop()
 
         try:
             while self.museum.is_serving():
-                while self.museum.is_serving() and loop.time() < self._round_end:
-                    await pak.util.yield_exec()
+                time = loop.time()
 
-                await self.start_new_round()
+                if time >= self._round_end:
+                    await self.start_new_round()
+
+                    continue
+
+                inactive_listner_times = []
+                for listner_time, listeners in self._active_round_time_listeners.items():
+                    if time >= listner_time:
+                        await asyncio.gather(*[
+                            listener() for listener in listeners
+                        ])
+
+                        inactive_listner_times.append(listner_time)
+
+                for listner_time in inactive_listner_times:
+                    self._active_round_time_listeners.pop(listner_time)
+
+                await pak.util.yield_exec()
 
         except asyncio.CancelledError:
             return
@@ -473,11 +538,7 @@ class Exhibit(pak.AsyncPacketHandler):
             for client in self.clients
         ])
 
-        if self.round_duration != 0:
-            self._round_end = asyncio.get_running_loop().time() + self.round_duration
-
-            if self._check_round_ended_task is None:
-                self._check_round_ended_task = asyncio.create_task(self._check_round_ended())
+        self._setup_round_timings()
 
     def activity_for_new_client(self, client):
         return caseus.enums.PlayerActivity.Dead

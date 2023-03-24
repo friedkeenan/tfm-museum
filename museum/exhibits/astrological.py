@@ -59,20 +59,5 @@ class Astrological(AdventureExhibit):
         # We don't do the same because we don't perform
         # any persistent change.
 
-        await self.broadcast_packet(
-            caseus.clientbound.RaiseItemPacket,
-
-            session_id = client.session_id,
-            item       = caseus.clientbound.RaiseItemPacket.InventoryItem(
-                item_id = random.choice(self.CHEESE_IDS),
-            ),
-        )
-
-        await self.broadcast_packet(
-            caseus.clientbound.RaiseItemPacket,
-
-            session_id = packet.partner_session_id,
-            item       = caseus.clientbound.RaiseItemPacket.InventoryItem(
-                item_id = random.choice(self.CHEESE_IDS),
-            ),
-        )
+        await self.raise_inventory_item(client,                    random.choice(self.CHEESE_IDS))
+        await self.raise_inventory_item(packet.partner_session_id, random.choice(self.CHEESE_IDS))

@@ -58,11 +58,4 @@ class Ninja(AdventureExhibit):
         ])
 
     async def on_get_collectible(self, client, packet):
-        await self.broadcast_packet(
-            caseus.clientbound.RaiseItemPacket,
-
-            session_id = client.session_id,
-            item       = caseus.clientbound.RaiseItemPacket.InventoryItem(
-                item_id = self.REWARD_ID,
-            ),
-        )
+        await self.raise_inventory_item(client, self.REWARD_ID)
