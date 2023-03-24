@@ -27,6 +27,7 @@ The currently available exhibits are:
 - [Astrological](https://transformice.fandom.com/wiki/Astrological_2016)
 - [Dragon](https://transformice.fandom.com/wiki/Dragon_2016)
 - [Ninja](https://transformice.fandom.com/wiki/Ninja_2016)
+- [Rain](https://transformice.fandom.com/wiki/Rain_2016)
 
 ## Miscellaneous Tools
 
