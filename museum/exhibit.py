@@ -41,6 +41,8 @@ class Exhibit(pak.AsyncPacketHandler):
 
     shaman_color = 0x95D9D6
 
+    incomplete = False
+
     ROUND_SHORTEN_TIME = 20
 
     _UNSPECIFIED = pak.util.UniqueSentinel("UNSPECIFIED")
@@ -183,6 +185,7 @@ class Exhibit(pak.AsyncPacketHandler):
             return self._map_xml_data
 
         self._map_xml_data = await self.museum.data(self.map_xml_path)
+        self._map_xml_data = self._map_xml_data.strip()
 
         return self._map_xml_data
 
@@ -567,6 +570,13 @@ class Exhibit(pak.AsyncPacketHandler):
         client.activity = self.activity_for_new_client(client)
 
         client.has_sent_anchors = False
+
+        if self.incomplete:
+            await client.write_packet(
+                caseus.clientbound.GeneralMessagePacket,
+
+                message = "<B><R>Warning! This exhibit is <J>INCOMPLETE</J>!</R></B>",
+            )
 
         await self.on_enter_exhibit(client)
 
