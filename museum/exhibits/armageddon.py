@@ -97,7 +97,7 @@ class Armageddon(AdventureExhibit):
 
         await self.report_feather_progress_to(client)
 
-        for other_client in self.clients:
+        for other_client in self.alive_clients:
             if other_client is client:
                 continue
 

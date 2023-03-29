@@ -449,6 +449,11 @@ class Exhibit(pak.AsyncPacketHandler):
 
         self._round_end = time + self.round_duration
 
+        # TODO: Should the time be dynamic with '_round_end' since that
+        # can change if e.g. the round gets shortened? Or would that be
+        # weird for the round to shorten and then have a bunch of things
+        # happen? Leaning towards keeping the current situation of being
+        # based on just when the round started.
         self._active_round_time_listeners = {
             time + passed_time: listeners for passed_time, listeners in self._round_time_listeners.items()
         }
@@ -487,6 +492,20 @@ class Exhibit(pak.AsyncPacketHandler):
         except asyncio.CancelledError:
             return
 
+    async def shorten_round(self, round_time=None):
+        if round_time is None:
+            round_time = self.ROUND_SHORTEN_TIME
+
+        new_round_end = asyncio.get_running_loop().time() + round_time
+        if new_round_end < self._round_end:
+            await self.broadcast_packet(
+                caseus.clientbound.SetRoundTimerPacket,
+
+                seconds = round_time,
+            )
+
+            self._round_end = new_round_end
+
     async def check_shorten_round(self):
         num_alive_clients = len(self.alive_clients)
 
@@ -503,15 +522,7 @@ class Exhibit(pak.AsyncPacketHandler):
         ):
             return
 
-        new_round_end = asyncio.get_running_loop().time() + self.ROUND_SHORTEN_TIME
-        if new_round_end < self._round_end:
-            await self.broadcast_packet(
-                caseus.clientbound.SetRoundTimerPacket,
-
-                seconds = self.ROUND_SHORTEN_TIME,
-            )
-
-            self._round_end = asyncio.get_running_loop().time() + self.ROUND_SHORTEN_TIME
+        await self.shorten_round()
 
     async def start_new_round(self):
         self.round_id     = (self.round_id + 1) % 127
