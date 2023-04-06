@@ -643,7 +643,7 @@ class Exhibit(pak.AsyncPacketHandler):
         await self.on_enter_exhibit(client)
 
     async def _on_reload(self):
-        # TODO: TaskGroup in Pytohn 3.11.
+        # TODO: TaskGroup in Python 3.11.
         await asyncio.gather(*[
             self._reload_client(client)
 
