@@ -201,6 +201,15 @@ class Exhibit(pak.AsyncPacketHandler):
     async def on_multi_emote(self, client, packet):
         pass
 
+    async def server_message(self, translation_key, *translation_args, general_channel=True):
+        await self.broadcast_packet(
+            caseus.clientbound.ServerMessagePacket,
+
+            general_channel  = general_channel,
+            translation_key  = translation_key,
+            translation_args = [str(arg) for arg in translation_args],
+        )
+
     async def kill(self, client, *, only_others=False, type=caseus.enums.DeathType.Normal):
         await self.broadcast_packet_except(
             client if only_others else None,
@@ -334,6 +343,45 @@ class Exhibit(pak.AsyncPacketHandler):
             item       = caseus.clientbound.RaiseItemPacket.InventoryItem(
                 item_id = item_id,
             ),
+        )
+
+    async def give_meep(self, client, can_meep=True):
+        await client.write_packet(
+            caseus.clientbound.GiveMeepPacket,
+
+            can_meep = can_meep,
+        )
+
+    async def add_npc_for_individual(
+        self,
+        client,
+        *,
+        session_id,
+        name,
+        title_id,
+        feminine,
+        outfit_code,
+        x,
+        y,
+        facing_right,
+        face_player = True,
+        interface = caseus.enums.NPCInterface.OfficialEvent,
+        periodic_message = "",
+    ):
+        await client.write_packet(
+            caseus.clientbound.AddNPCPacket,
+
+            session_id       = session_id,
+            name             = name,
+            title_id         = title_id,
+            feminine         = feminine,
+            outfit_code      = outfit_code,
+            x                = x,
+            y                = y,
+            facing_right     = facing_right,
+            face_player      = face_player,
+            interface        = interface,
+            periodic_message = periodic_message,
         )
 
     def _new_shaman(self):
@@ -563,6 +611,48 @@ class Exhibit(pak.AsyncPacketHandler):
     async def on_exit_exhibit(self, client):
         pass
 
+    async def _warn_incomplete(self, client):
+        if not self.incomplete:
+            return
+
+        await client.general_message("<B><R>Warning! This exhibit is <J>INCOMPLETE</J>!</R></B>")
+
+    async def _reload_client(self, client):
+        # The room name could have changed.
+        await client.write_packet(
+            caseus.clientbound.JoinedRoomPacket,
+
+            official  = True,
+            raw_name  = self.room_name,
+            flag_code = self.museum.country,
+        )
+
+        # Not sure this is necessary but might as well send it.
+        await client.write_packet(
+            caseus.clientbound.StartRoundCountdownPacket,
+
+            activate_countdown = False,
+        )
+
+        client.activity = self.activity_for_new_client(client)
+
+        client.has_sent_anchors = False
+
+        await self._warn_incomplete(client)
+
+        await self.on_enter_exhibit(client)
+
+    async def _on_reload(self):
+        # TODO: TaskGroup in Pytohn 3.11.
+        await asyncio.gather(*[
+            self._reload_client(client)
+
+            for client in self.clients
+        ])
+
+        await self.start_new_round()
+        await self.server_message("Reloaded exhibit")
+
     async def _on_enter_exhibit(self, client):
         await client.write_packet(
             caseus.clientbound.JoinedRoomPacket,
@@ -582,12 +672,7 @@ class Exhibit(pak.AsyncPacketHandler):
 
         client.has_sent_anchors = False
 
-        if self.incomplete:
-            await client.write_packet(
-                caseus.clientbound.GeneralMessagePacket,
-
-                message = "<B><R>Warning! This exhibit is <J>INCOMPLETE</J>!</R></B>",
-            )
+        await self._warn_incomplete(client)
 
         await self.on_enter_exhibit(client)
 
@@ -631,6 +716,9 @@ class Exhibit(pak.AsyncPacketHandler):
         match packet.command.split():
             case ["mort", *_]:
                 await self.kill(client)
+
+            case ["reload"]:
+                await self.museum.reload_exhibit(self)
 
     @pak.packet_listener(caseus.serverbound.ObjectSyncPacket)
     async def _on_object_sync(self, client, packet):
@@ -912,4 +1000,15 @@ class Exhibit(pak.AsyncPacketHandler):
 
             username = client.username,
             message  = packet.message,
+        )
+
+    @pak.packet_listener(caseus.serverbound.MeepPacket)
+    async def _on_meep(self, client, packet):
+        await self.broadcast_packet(
+            caseus.clientbound.MeepExplosionPacket,
+
+            session_id = client.session_id,
+            x          = packet.x,
+            y          = packet.y,
+            power      = client.meep_power,
         )

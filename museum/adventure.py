@@ -24,6 +24,14 @@ class AdventureExhibit(Exhibit):
             y              = y,
         )
 
+    async def remove_collectible(self, client, individual_id):
+        await client.write_packet(
+            caseus.clientbound.RemoveCollectiblePacket,
+
+            adventure_id  = self.adventure_id,
+            individual_id = individual_id,
+        )
+
     async def add_area(self, client, *, area_id, x, y, width, height):
         if area_id == 0:
             raise ValueError("An area's ID should not be '0'")

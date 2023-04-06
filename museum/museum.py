@@ -29,6 +29,8 @@ class Museum(caseus.MinimalServer):
         cheeses    = caseus.MinimalServer.Connection.SynchronizedAttr(0)
         context_id = caseus.MinimalServer.Connection.SynchronizedAttr(0)
 
+        meep_power = caseus.MinimalServer.Connection.SynchronizedAttr(5)
+
         async def wait_closed(self):
             old_exhibit = self.exhibit
             self.exhibit = None
@@ -50,15 +52,18 @@ class Museum(caseus.MinimalServer):
                 **kwargs,
             )
 
+        async def general_message(self, message):
+            await self.write_packet(
+                caseus.clientbound.GeneralMessagePacket,
+
+                message = message,
+            )
+
         async def join_room(self, room_name):
             fallback, exhibit = self.server.find_exhbit(room_name.lower())
 
             if fallback:
-                await self.write_packet(
-                    caseus.clientbound.GeneralMessagePacket,
-
-                    message = f"<B><ROSE>Could not find exhibit '{room_name}', falling back to {exhibit.room_name}...</ROSE></B>"
-                )
+                await self.general_message(f"<B><ROSE>Could not find exhibit '{room_name}', falling back to {exhibit.room_name}...</ROSE></B>")
 
             if exhibit is self.exhibit:
                 return
@@ -116,6 +121,62 @@ class Museum(caseus.MinimalServer):
         await asyncio.gather(*[x.wait_closed() for x in self.exhibits])
 
         await super().wait_closed()
+
+    async def _swap_exhibit(self, client, new_exhibit):
+        # Stop the client from thinking it's a synchronizer.
+        if client is client.exhibit.synchronizer:
+            await client.write_packet(
+                caseus.clientbound.LegacyWrapperPacket,
+
+                nested = caseus.clientbound.SetSynchronizerPacket(
+                    session_id            = 0,
+                    spawn_initial_objects = False,
+                ),
+            )
+
+        # NOTE: We don't call '_on_exit_exhibit'
+        # because that will do more than is necessary
+        # for reloading. Perhaps we should have more
+        # specific methods?
+        await client.exhibit.on_exit_exhibit(client)
+
+        client.exhibit = new_exhibit
+
+    async def reload_exhibit(self, exhibit):
+        module = importlib.import_module(exhibit.__module__)
+        importlib.reload(module)
+
+        # Reloading a module does not delete global variables.
+        if module._available_exhibit is type(exhibit):
+            del module._available_exhibit
+
+        if not hasattr(module, "_available_exhibit"):
+            # TODO: Error message?
+
+            # TODO: TaskGroup in Python 3.11.
+            await asyncio.gather(*[
+                client.join_room(fallback_exhibit.__name__.rsplit(".", 1)[1])
+
+                for client in exhibit.clients
+            ])
+
+            self.exhibits.remove(exhibit)
+
+            return
+
+        new_exhibit = module._available_exhibit(self)
+
+        # TODO: TaskGroup in Python 3.11.
+        await asyncio.gather(*[
+            self._swap_exhibit(client, new_exhibit)
+
+            for client in exhibit.clients
+        ])
+
+        self.exhibits.remove(exhibit)
+        self.exhibits.append(new_exhibit)
+
+        await new_exhibit._on_reload()
 
     def _find_or_add_exhibit(self, exhibit_cls):
         for exhibit in self.exhibits:
