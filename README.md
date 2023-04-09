@@ -19,6 +19,10 @@ This will run a server implementation running on `localhost:11801` that you can 
 
 Please note that this server is **NOT** intended for a general audience. It implicitly trusts clients, and does not attempt much of any error handling, nor does it care that much about performance. Using this server for a general audience is a decidedly bad idea. Do not do it.
 
+## Showcase
+
+https://user-images.githubusercontent.com/20881398/230795738-b1790f6f-ed2e-4158-bd5c-826eb613010e.mp4
+
 ## Available Exhibits
 
 The currently available exhibits are:
