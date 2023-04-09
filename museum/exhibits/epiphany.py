@@ -42,6 +42,8 @@ class Epiphany(AdventureExhibit):
     CAKE_OFFSET_X = -22
     CAKE_OFFSET_Y = -22
 
+    REWARD_ID = 2224
+
     incomplete = True
 
     async def start_new_round(self):
@@ -147,4 +149,4 @@ class Epiphany(AdventureExhibit):
         client.carrying_cake = False
 
         await self.clear_carrying(client)
-        await self.raise_inventory_item(client, 2224)
+        await self.raise_inventory_item(client, self.REWARD_ID)
