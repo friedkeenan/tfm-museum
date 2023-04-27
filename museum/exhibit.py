@@ -934,15 +934,15 @@ class Exhibit(pak.AsyncPacketHandler):
             mice_collidable  = True,
         )
 
-    @pak.packet_listener(caseus.serverbound.ShowEmoticonPacket)
-    async def _on_show_emoticon(self, client, packet):
+    @pak.packet_listener(caseus.serverbound.ShowEmojiPacket)
+    async def _on_show_emoji(self, client, packet):
         await self.broadcast_packet_except(
             client,
 
-            caseus.clientbound.ShowEmoticonPacket,
+            caseus.clientbound.ShowEmojiPacket,
 
             session_id = client.session_id,
-            emoticon   = packet.emoticon,
+            emoji_id   = packet.emoji_id,
         )
 
     @pak.packet_listener(caseus.serverbound.PlayEmotePacket)

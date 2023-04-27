@@ -269,6 +269,8 @@ class Museum(caseus.MinimalServer):
             new_protocol = True,
         )
 
+        await client.write_packet(caseus.clientbound.AvailableEmojisPacket)
+
         await client.join_room(packet.start_room)
 
     @pak.packet_listener(caseus.serverbound.JoinRoomPacket)
