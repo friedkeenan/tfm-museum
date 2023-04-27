@@ -118,6 +118,14 @@ async def archive_misc_urls(data_dir, archive_dir, urls_path):
         async for url in f:
             url = url.strip()
 
+            # We ignore comments.
+            #
+            # NOTE: URLs can have '#' within them,
+            # but then they would indicate a 'fragment
+            # identifier', which does not change the
+            # content of the webpage.
+            url = url.split("#", 1)[0]
+
             if len(url) <= 0:
                 continue
 
