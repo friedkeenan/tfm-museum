@@ -58,12 +58,11 @@ class Dino(AdventureExhibit):
         time_traveler.activity = caseus.enums.PlayerActivity.Dead
 
     async def show_time_travel(self, client):
-        # TODO: TaskGroup in Python 3.11.
-        await asyncio.gather(*[
-            self._show_time_travel(client, time_traveler)
-
-            for time_traveler in self.alive_clients
-        ])
+        async with asyncio.TaskGroup() as tg:
+            for time_traveler in self.alive_clients:
+                tg.create_task(
+                    self._show_time_travel(client, time_traveler)
+                )
 
         # Make the tardis time travel too.
         await self.adventure_action(client, 3)
@@ -80,12 +79,11 @@ class Dino(AdventureExhibit):
 
         self.gear_progress += 1
 
-        # TODO: TaskGroup in Python 3.11.
-        await asyncio.gather(*[
-            self.report_gear_progress_to(client)
-
-            for client in self.clients
-        ])
+        async with asyncio.TaskGroup() as tg:
+            for client in self.clients:
+                tg.create_task(
+                    self.report_gear_progress_to(client)
+                )
 
         if self.gear_progress >= self.needed_gears:
             await self.shorten_round(15)

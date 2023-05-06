@@ -115,14 +115,14 @@ class Epiphany(AdventureExhibit):
 
         self.collected_cakes.append(packet.individual_id)
 
-        # TODO: TaskGroup in Python 3.11.
-        await asyncio.gather(*[
-            self.remove_collectible(other_client, packet.individual_id)
+        async with asyncio.TaskGroup() as tg:
+            for other_client in self.clients:
+                if other_client is client:
+                    continue
 
-            for other_client in self.clients
-
-            if other_client is not client
-        ])
+                tg.create_task(
+                    self.remove_collectible(other_client, packet.individual_id)
+                )
 
         client.carrying_cake = True
         await self.set_can_collect(client, False)

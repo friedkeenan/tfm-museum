@@ -157,28 +157,29 @@ class Exhibit(pak.AsyncPacketHandler):
         )
 
     async def broadcast_packet(self, packet_cls, **fields):
-        # TODO: TaskGroup in Python 3.11.
-        await asyncio.gather(*[
-            client.write_packet(
-                packet_cls,
+        async with asyncio.TaskGroup() as tg:
+            for client in self.clients:
+                tg.create_task(
+                    client.write_packet(
+                        packet_cls,
 
-                **fields,
-            )
-
-            for client in self.clients
-        ])
+                        **fields,
+                    )
+                )
 
     async def broadcast_packet_except(self, client, packet_cls, **fields):
-        # TODO: TaskGroup in Python 3.11.
-        await asyncio.gather(*[
-            other_client.write_packet(
-                packet_cls,
+        async with asyncio.TaskGroup() as tg:
+            for other_client in self.clients:
+                if other_client is client:
+                    continue
 
-                **fields,
-            )
+                tg.create_task(
+                    other_client.write_packet(
+                        packet_cls,
 
-            for other_client in self.clients if other_client is not client
-        ])
+                        **fields,
+                    )
+                )
 
     async def xml_data(self):
         if self._map_xml_data is not None:
@@ -510,7 +511,10 @@ class Exhibit(pak.AsyncPacketHandler):
             self._check_round_timings_task = asyncio.create_task(self._check_round_timings())
 
     async def _check_round_timings(self):
-        # TODO: Make this use a 'Timeout' in Python 3.11?
+        # NOTE: This could maybe be adjusted to use a 'Timeout'
+        # object, but that might be strange with the round time
+        # listening fucntionality, and so we're currently sticking
+        # with what we have.
 
         loop = asyncio.get_running_loop()
 
@@ -593,12 +597,11 @@ class Exhibit(pak.AsyncPacketHandler):
 
             players.append(self.player_description(client))
 
-        # TODO: TaskGroup in Python 3.11.
-        await asyncio.gather(*[
-            self.send_round(client, players=players, spawn_initial_objects=True, duration=self.round_duration)
-
-            for client in self.clients
-        ])
+        async with asyncio.TaskGroup() as tg:
+            for client in self.clients:
+                tg.create_task(
+                    self.send_round(client, players=players, spawn_initial_objects=True, duration=self.round_duration)
+                )
 
         self._setup_round_timings()
 
@@ -643,12 +646,11 @@ class Exhibit(pak.AsyncPacketHandler):
         await self.on_enter_exhibit(client)
 
     async def _on_reload(self):
-        # TODO: TaskGroup in Python 3.11.
-        await asyncio.gather(*[
-            self._reload_client(client)
-
-            for client in self.clients
-        ])
+        async with asyncio.TaskGroup() as tg:
+            for client in self.clients:
+                tg.create_task(
+                    self._reload_client(client)
+                )
 
         await self.start_new_round()
         await self.server_message("Reloaded exhibit")

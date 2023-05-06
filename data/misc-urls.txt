@@ -1,13 +1,13 @@
 # We archive the default emojis just in case.
 #
 # TODO: Do we want to archive non-default emojis too?
-https://www.transformice.com/images/x_transformice/x_smiley/1.png
-https://www.transformice.com/images/x_transformice/x_smiley/2.png
-https://www.transformice.com/images/x_transformice/x_smiley/3.png
-https://www.transformice.com/images/x_transformice/x_smiley/4.png
-https://www.transformice.com/images/x_transformice/x_smiley/5.png
-https://www.transformice.com/images/x_transformice/x_smiley/6.png
-https://www.transformice.com/images/x_transformice/x_smiley/7.png
-https://www.transformice.com/images/x_transformice/x_smiley/8.png
-https://www.transformice.com/images/x_transformice/x_smiley/9.png
-https://www.transformice.com/images/x_transformice/x_smiley/10.png
+http://www.transformice.com/images/x_transformice/x_smiley/1.png
+http://www.transformice.com/images/x_transformice/x_smiley/2.png
+http://www.transformice.com/images/x_transformice/x_smiley/3.png
+http://www.transformice.com/images/x_transformice/x_smiley/4.png
+http://www.transformice.com/images/x_transformice/x_smiley/5.png
+http://www.transformice.com/images/x_transformice/x_smiley/6.png
+http://www.transformice.com/images/x_transformice/x_smiley/7.png
+http://www.transformice.com/images/x_transformice/x_smiley/8.png
+http://www.transformice.com/images/x_transformice/x_smiley/9.png
+http://www.transformice.com/images/x_transformice/x_smiley/10.png

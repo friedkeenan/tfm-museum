@@ -63,12 +63,11 @@ class Armageddon(AdventureExhibit):
 
         self.feather_progress += 1
 
-        # TODO: TaskGroup in Python 3.11.
-        await asyncio.gather(*[
-            self.report_feather_progress_to(client)
-
-            for client in self.clients
-        ])
+        async with asyncio.TaskGroup() as tg:
+            for client in self.clients:
+                tg.create_task(
+                    self.report_feather_progress_to(client)
+                )
 
     async def on_exit_exhibit(self, client):
         try:

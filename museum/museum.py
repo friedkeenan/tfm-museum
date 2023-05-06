@@ -117,8 +117,11 @@ class Museum(caseus.MinimalServer):
         super().close()
 
     async def wait_closed(self):
-        # TODO: TaskGroup in Python 3.11.
-        await asyncio.gather(*[x.wait_closed() for x in self.exhibits])
+        async with asyncio.TaskGroup() as tg:
+            for exhibit in self.exhibits:
+                tg.create_task(
+                    exhibit.wait_closed()
+                )
 
         await super().wait_closed()
 
@@ -153,12 +156,11 @@ class Museum(caseus.MinimalServer):
         if not hasattr(module, "_available_exhibit"):
             # TODO: Error message?
 
-            # TODO: TaskGroup in Python 3.11.
-            await asyncio.gather(*[
-                client.join_room(fallback_exhibit.__name__.rsplit(".", 1)[1])
-
-                for client in exhibit.clients
-            ])
+            async with asyncio.TaskGroup() as tg:
+                for client in exhibit.clients:
+                    tg.create_task(
+                        client.join_room(fallback_exhibit.__name__.rsplit(".", 1)[1])
+                    )
 
             self.exhibits.remove(exhibit)
 
@@ -166,12 +168,11 @@ class Museum(caseus.MinimalServer):
 
         new_exhibit = module._available_exhibit(self)
 
-        # TODO: TaskGroup in Python 3.11.
-        await asyncio.gather(*[
-            self._swap_exhibit(client, new_exhibit)
-
-            for client in exhibit.clients
-        ])
+        async with asyncio.TaskGroup() as tg:
+            for client in exhibit.clients:
+                tg.create_task(
+                    self._swap_exhibit(client, new_exhibit)
+                )
 
         self.exhibits.remove(exhibit)
         self.exhibits.append(new_exhibit)

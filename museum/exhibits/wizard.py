@@ -24,12 +24,11 @@ class Wizard(AdventureExhibit):
     # TODO: Resource enum stuff.
 
     async def collect_resource(self, client, resource):
-        # TODO: TaskGroup in Python 3.11.
-        await asyncio.gather(*[
-            self.adventure_action(2, client.session_id, resource.value)
-
-            for client in self.clients
-        ])
+        async with asyncio.TaskGroup() as tg:
+            for client in self.clients:
+                tg.create_task(
+                    self.adventure_action(2, client.session_id, resource.value)
+                )
 
     async def on_adventure_action(self, client, packet):
         # Only action ID 1 should ever be sent.
