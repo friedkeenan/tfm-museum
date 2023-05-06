@@ -513,7 +513,7 @@ class Exhibit(pak.AsyncPacketHandler):
     async def _check_round_timings(self):
         # NOTE: This could maybe be adjusted to use a 'Timeout'
         # object, but that might be strange with the round time
-        # listening fucntionality, and so we're currently sticking
+        # listening functionality, and so we're currently sticking
         # with what we have.
 
         loop = asyncio.get_running_loop()
