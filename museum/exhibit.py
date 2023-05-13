@@ -135,25 +135,17 @@ class Exhibit(pak.AsyncPacketHandler):
 
         return None
 
-    def player_description(self, client):
-        return dict(
-            username       = client.username,
-            session_id     = client.session_id,
-            is_shaman      = client.is_shaman,
-            activity       = client.activity,
-            score          = 0,
-            cheeses        = client.cheeses,
-            title_id       = 0,
-            title_stars    = 0,
-            gender         = caseus.enums.Gender.Unknown,
-            unk_string_10  = "0",
-            outfit_code    = "1;0,0,0,0,0,0",
-            unk_boolean_12 = False,
-            mouse_color    = 0,
-            shaman_color   = self.shaman_color,
-            unk_int_15     = 0,
-            name_color     = -1,
-            context_id     = client.context_id,
+    def player_info(self, client):
+        return caseus.PlayerInfo(
+            username     = client.username,
+            session_id   = client.session_id,
+            is_shaman    = client.is_shaman,
+            activity     = client.activity,
+            cheeses      = client.cheeses,
+            outfit_code  = "1;0,0,0,0,0,0",
+            shaman_color = self.shaman_color,
+            name_color   = -1,
+            context_id   = client.context_id,
         )
 
     async def broadcast_packet(self, packet_cls, **fields):
@@ -255,7 +247,7 @@ class Exhibit(pak.AsyncPacketHandler):
         await self.broadcast_packet(
             caseus.clientbound.UpdatePlayerListPacket,
 
-            player                  = self.player_description(client),
+            player                  = self.player_info(client),
             skip_prepare_animations = True,
         )
 
@@ -451,7 +443,7 @@ class Exhibit(pak.AsyncPacketHandler):
         )
 
         if players is None:
-            players = [self.player_description(client) for client in self.clients]
+            players = [self.player_info(client) for client in self.clients]
 
         await client.write_packet(
             caseus.clientbound.SetPlayerListPacket,
@@ -595,7 +587,7 @@ class Exhibit(pak.AsyncPacketHandler):
 
             client.has_sent_anchors = True
 
-            players.append(self.player_description(client))
+            players.append(self.player_info(client))
 
         async with asyncio.TaskGroup() as tg:
             for client in self.clients:
@@ -690,7 +682,7 @@ class Exhibit(pak.AsyncPacketHandler):
 
                 caseus.clientbound.UpdatePlayerListPacket,
 
-                player              = self.player_description(client),
+                player              = self.player_info(client),
                 refresh_player_menu = True,
             )
 

@@ -28,20 +28,11 @@ class Astrological(AdventureExhibit):
             caseus.clientbound.LoadInventoryPacket,
 
             items = [
-                # NOTE: Most values aren't based on anything really.
-                dict(
-                    item_id             = item_id,
-                    quantity            = 1,
-                    priority            = 0,
-                    unk_boolean_4       = False,
-                    can_use             = False,
-                    can_equip           = False,
-                    unk_boolean_7       = False,
-                    category            = caseus.enums.ItemCategory.Adventure,
-                    can_use_immediately = False,
-                    can_use_when_dead   = False,
-                    image_name          = None,
-                    slot                = -1,
+                caseus.clientbound.LoadInventoryPacket.ItemInfo(
+                    item_id  = item_id,
+                    quantity = 1,
+                    category = caseus.enums.ItemCategory.Adventure,
+                    slot     = -1,
                 )
 
                 for item_id in random.sample(self.CHEESE_IDS, random.randrange(len(self.CHEESE_IDS) + 1))
