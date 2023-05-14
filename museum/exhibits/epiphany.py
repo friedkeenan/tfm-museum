@@ -71,7 +71,7 @@ class Epiphany(AdventureExhibit):
             name         = self.KING_NAME,
             title_id     = self.KING_TITLE_ID,
             feminine     = False,
-            outfit_code  = self.KING_SPRITE,
+            look         = self.KING_SPRITE,
             x            = self.KING_X,
             y            = self.KING_Y,
             facing_right = False,
