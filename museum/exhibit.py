@@ -377,6 +377,80 @@ class Exhibit(pak.AsyncPacketHandler):
             periodic_message = periodic_message,
         )
 
+    async def add_official_image_for_individual(
+        self,
+        client,
+        *,
+
+        image_path, x, y,
+
+        width              = 0,
+        height             = 0,
+        target             = caseus.enums.OfficialImageTarget.BackgroundLayer,
+        tile_info          = None,
+        disappear_on_click = False,
+        hidden             = False,
+        name               = "",
+    ):
+        await client.write_packet(
+            caseus.clientbound.AddOfficialImagesPacket,
+
+            images = [
+                caseus.clientbound.AddOfficialImagesPacket.ImageInfo(
+                    image_path         = image_path,
+                    x                  = x,
+                    y                  = y,
+                    width              = width,
+                    height             = height,
+                    target             = target,
+                    tile_info          = tile_info,
+                    disappear_on_click = disappear_on_click,
+                    hidden             = hidden,
+                    name               = name,
+                ),
+            ]
+        )
+
+    async def add_official_image(
+        self,
+        *,
+
+        image_path, x, y,
+
+        width              = 0,
+        height             = 0,
+        target             = caseus.enums.OfficialImageTarget.BackgroundLayer,
+        tile_info          = None,
+        disappear_on_click = False,
+        hidden             = False,
+        name               = "",
+    ):
+        await self.broadcast_packet(
+            caseus.clientbound.AddOfficialImagesPacket,
+
+            images = [
+                caseus.clientbound.AddOfficialImagesPacket.ImageInfo(
+                    image_path         = image_path,
+                    x                  = x,
+                    y                  = y,
+                    width              = width,
+                    height             = height,
+                    target             = target,
+                    tile_info          = tile_info,
+                    disappear_on_click = disappear_on_click,
+                    hidden             = hidden,
+                    name               = name,
+                ),
+            ]
+        )
+
+    async def remove_official_image(self, name):
+        await self.broadcast_packet(
+            caseus.clientbound.RemoveOfficialImagePacket,
+
+            name = name,
+        )
+
     def _new_shaman(self):
         clients = self.clients
 
@@ -519,22 +593,31 @@ class Exhibit(pak.AsyncPacketHandler):
 
                     continue
 
-                inactive_listner_times = []
-                for listner_time, listeners in self._active_round_time_listeners.items():
-                    if time >= listner_time:
-                        await asyncio.gather(*[
-                            listener() for listener in listeners
-                        ])
+                async with asyncio.TaskGroup() as tg:
+                    tg.create_task(
+                        self.check_round_timings(time)
+                    )
 
-                        inactive_listner_times.append(listner_time)
+                    inactive_listener_times = []
+                    for listener_time, listeners in self._active_round_time_listeners.items():
+                        if time >= listener_time:
+                            for listener in listeners:
+                                tg.create_task(
+                                    listener()
+                                )
 
-                for listner_time in inactive_listner_times:
-                    self._active_round_time_listeners.pop(listner_time)
+                            inactive_listener_times.append(listener_time)
+
+                    for listener_time in inactive_listener_times:
+                        self._active_round_time_listeners.pop(listener_time)
 
                 await pak.util.yield_exec()
 
         except asyncio.CancelledError:
             return
+
+    async def check_round_timings(self, time):
+        pass
 
     async def shorten_round(self, round_time=None):
         if round_time is None:
