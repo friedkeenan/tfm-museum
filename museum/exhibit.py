@@ -194,6 +194,12 @@ class Exhibit(pak.AsyncPacketHandler):
     async def on_multi_emote(self, client, packet):
         pass
 
+    async def on_purchase_npc_item(self, client, item_index):
+        pass
+
+    async def on_click_npc(self, client, npc_name):
+        pass
+
     async def server_message(self, translation_key, *translation_args, general_channel=True):
         await self.broadcast_packet(
             caseus.clientbound.ServerMessagePacket,
@@ -356,7 +362,7 @@ class Exhibit(pak.AsyncPacketHandler):
         look,
         x,
         y,
-        facing_right,
+        facing_right = True,
         face_player = True,
         interface = caseus.enums.NPCInterface.OfficialEvent,
         periodic_message = "",
@@ -751,6 +757,9 @@ class Exhibit(pak.AsyncPacketHandler):
 
         await self._warn_incomplete(client)
 
+        client._last_npc_click_name        = None
+        client._last_npc_click_fingerprint = None
+
         await self.on_enter_exhibit(client)
 
         # No clients before.
@@ -770,6 +779,9 @@ class Exhibit(pak.AsyncPacketHandler):
             )
 
     async def _on_exit_exhibit(self, client):
+        del client._last_npc_click_name
+        del client._last_npc_click_fingerprint
+
         if client is self.synchronizer:
             # Stop the client from thinking it's a synchronizer.
             await client.write_packet(
@@ -880,7 +892,7 @@ class Exhibit(pak.AsyncPacketHandler):
             caseus.clientbound.PlayerActionPacket,
 
             session_id = client.session_id,
-            animation  = packet.animation,
+            action     = packet.action,
             allow_self = False,
         )
 
@@ -1089,3 +1101,40 @@ class Exhibit(pak.AsyncPacketHandler):
             y          = packet.y,
             power      = client.meep_power,
         )
+
+    @pak.packet_listener(caseus.serverbound.InteractWithOfficialNPCPacket)
+    async def _on_interact_npc(self, client, packet):
+        if isinstance(packet.interaction, caseus.serverbound.InteractWithOfficialNPCPacket.PurchaseItem):
+            await self.on_purchase_npc_item(client, packet.interaction.item_index)
+
+            return
+
+        # Since we have no satellite server, we get sent two identical
+        # packets, and so we ignore one of them.
+        #
+        # NOTE: We don't need to check for if we pass the expected
+        # fingerprint again with a different packet because the next
+        # click packet will have an unexpected fingerprint anyways.
+        #
+        # TODO: Better way of differentiating main/satellite packets?
+
+        if packet.interaction.name != client._last_npc_click_name:
+            client._last_npc_click_name        = packet.interaction.name
+            client._last_npc_click_fingerprint = packet.fingerprint
+
+            await self.on_click_npc(client, packet.interaction.name)
+
+            return
+
+        # We check both backwards and forwards fingerprints because
+        # we don't necessarily listen sequentially.
+
+        if packet.fingerprint == (client._last_npc_click_fingerprint + 1) % 100:
+            return
+
+        if packet.fingerprint == (client._last_npc_click_fingerprint - 1) % 100:
+            return
+
+        client._last_npc_click_fingerprint = packet.fingerprint
+
+        await self.on_click_npc(client, packet.interaction.name)

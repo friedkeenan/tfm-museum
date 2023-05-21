@@ -74,7 +74,6 @@ class Epiphany(AdventureExhibit):
             look         = self.KING_SPRITE,
             x            = self.KING_X,
             y            = self.KING_Y,
-            facing_right = False,
         )
 
         # NOTE: Individual IDs not based on anything.

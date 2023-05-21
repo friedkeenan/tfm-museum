@@ -33,6 +33,7 @@ The currently available exhibits are:
 - [Dragon](https://transformice.fandom.com/wiki/Dragon_2016)
 - **INCOMPLETE** [Epiphany](https://transformice.fandom.com/wiki/Epiphany_2016)
 - [Greenhouse](https://transformice.fandom.com/wiki/Greenhouse_2021)
+- [Greenhouse_Shop](https://transformice.fandom.com/wiki/Greenhouse_2023#Shops)
 - [Ninja](https://transformice.fandom.com/wiki/Ninja_2016)
 - [Rain](https://transformice.fandom.com/wiki/Rain_2016)
 - **INCOMPLETE** [Wizard](https://transformice.fandom.com/wiki/Wizard_2017)
