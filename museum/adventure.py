@@ -50,11 +50,13 @@ class AdventureExhibit(Exhibit):
     @staticmethod
     def _stringize_action_arg(arg):
         match arg:
-            case int():
-                return str(arg)
-
+            # This case must come first, otherwise
+            # a 'bool' will match with 'int()'.
             case bool():
                 return "true" if arg else "false"
+
+            case int():
+                return str(arg)
 
             case _:
                 return arg

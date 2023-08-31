@@ -7,7 +7,7 @@ from ..exhibit import available, Exhibit
 
 @available
 class Greenhouse_Shop(Exhibit):
-    map_code = 2801
+    map_code     = 2801
     map_xml_path = "Greenhouse/Shop_2023.xml"
 
     map_category   = caseus.enums.MapCategory.UserMadeVanilla
@@ -59,6 +59,22 @@ class Greenhouse_Shop(Exhibit):
     # the same session IDs for the same standard vendors,
     # however Indiana Mouse's session ID is always one
     # less than Fleur's.
+    #
+    # The standard vendors' session IDs seem to decrement
+    # around 1000 each shop map, for instance from '-4652'
+    # to '-5953'. This decrement varies however, I have
+    # often seen decrements of around 1300, one time of
+    # around 2000, and a few times of less than 1000.
+    # These variances seem to correspond to overall player
+    # activity, and from some rudimentary calculations
+    # it seems to me like the session IDs could decrement
+    # by one each time an event map appears in a room,
+    # regardless of whether it's the shop map or not.
+    #
+    # The session IDs also seem to only be reset when
+    # the server restarts, seemingly to 0. The session
+    # IDs additionally seem to be per-satellite server
+    # and not global.
     #
     # The session IDs used here are real values taken
     # from one instance of real communication.

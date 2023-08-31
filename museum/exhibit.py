@@ -209,6 +209,15 @@ class Exhibit(pak.AsyncPacketHandler):
             translation_args = [str(arg) for arg in translation_args],
         )
 
+    async def server_message_for_individual(self, client, translation_key, *translation_args, general_channel=True):
+        await client.write_packet(
+            caseus.clientbound.ServerMessagePacket,
+
+            general_channel  = general_channel,
+            translation_key  = translation_key,
+            translation_args = [str(arg) for arg in translation_args],
+        )
+
     async def kill(self, client, *, only_others=False, type=caseus.enums.DeathType.Normal):
         await self.broadcast_packet_except(
             client if only_others else None,
@@ -701,8 +710,7 @@ class Exhibit(pak.AsyncPacketHandler):
 
         await client.general_message("<B><R>Warning! This exhibit is <J>INCOMPLETE</J>!</R></B>")
 
-    async def _reload_client(self, client):
-        # The room name could have changed.
+    async def _joined_room(self, client):
         await client.write_packet(
             caseus.clientbound.JoinedRoomPacket,
 
@@ -710,6 +718,17 @@ class Exhibit(pak.AsyncPacketHandler):
             raw_name  = self.room_name,
             flag_code = self.museum.country,
         )
+
+        if client.can_teleport:
+            await client.write_packet(
+                caseus.clientbound.BindMouseDownPacket,
+
+                active = True,
+            )
+
+    async def _reload_client(self, client):
+        # The room name could have changed.
+        await self._joined_room(client)
 
         # Not sure this is necessary but might as well send it.
         await client.write_packet(
@@ -737,13 +756,7 @@ class Exhibit(pak.AsyncPacketHandler):
         await self.server_message("Reloaded exhibit")
 
     async def _on_enter_exhibit(self, client):
-        await client.write_packet(
-            caseus.clientbound.JoinedRoomPacket,
-
-            official  = True,
-            raw_name  = self.room_name,
-            flag_code = self.museum.country,
-        )
+        await self._joined_room(client)
 
         await client.write_packet(
             caseus.clientbound.StartRoundCountdownPacket,
@@ -784,30 +797,66 @@ class Exhibit(pak.AsyncPacketHandler):
 
         if client is self.synchronizer:
             # Stop the client from thinking it's a synchronizer.
-            await client.write_packet(
-                caseus.clientbound.LegacyWrapperPacket,
-
-                nested = caseus.clientbound.SetSynchronizerPacket(
-                    session_id            = 0,
-                    spawn_initial_objects = False,
-                ),
-            )
+            await client.write_packet(caseus.clientbound.DisableSynchronizationPacket)
 
         await self.new_synchronizer()
         await self.kill(client, only_others=True)
 
         await self.on_exit_exhibit(client)
 
+    async def _toggle_teleport(self, client):
+        client.can_teleport = not client.can_teleport
+
+        await client.write_packet(
+            caseus.clientbound.BindMouseDownPacket,
+
+            active = client.can_teleport,
+        )
+
+        if client.can_teleport:
+            await self.server_message_for_individual(
+                client,
+
+                "Teleportation enabled."
+            )
+
+        else:
+            await self.server_message_for_individual(
+                client,
+
+                "Teleportation disabled."
+            )
+
     @pak.packet_listener(caseus.serverbound.CommandPacket)
     async def _on_command(self, client, packet):
         # TODO: More scalable command system?
 
         match packet.command.split():
-            case ["mort", *_]:
+            case ["mort"]:
                 await self.kill(client)
 
             case ["reload"]:
                 await self.museum.reload_exhibit(self)
+
+            case ["teleport"] | ["tp"]:
+                await self._toggle_teleport(client)
+
+    @pak.packet_listener(caseus.serverbound.MouseDownPacket)
+    async def _on_mouse_down(self, client, packet):
+        if not client.can_teleport:
+            return
+
+        await client.write_packet(
+            caseus.clientbound.MovePlayerPacket,
+
+            x                 = packet.x,
+            y                 = packet.y,
+            position_relative = False,
+
+            velocity_x        = 0,
+            velocity_y        = 0,
+            velocity_relative = False,
+        )
 
     @pak.packet_listener(caseus.serverbound.ObjectSyncPacket)
     async def _on_object_sync(self, client, packet):
@@ -871,13 +920,13 @@ class Exhibit(pak.AsyncPacketHandler):
             caseus.clientbound.PlayerMovementPacket,
 
             session_id          = client.session_id,
-            round_id            = self.round_id,
             moving_right        = packet.moving_right,
             moving_left         = packet.moving_left,
             x                   = packet.x,
             y                   = packet.y,
             velocity_x          = packet.velocity_x,
             velocity_y          = packet.velocity_y,
+            honeyed_seconds     = packet.honeyed_seconds,
             jumping             = packet.jumping,
             jumping_frame_index = packet.jumping_frame_index,
             entered_portal      = packet.entered_portal,

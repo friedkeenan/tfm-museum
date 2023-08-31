@@ -31,6 +31,8 @@ class Museum(caseus.MinimalServer):
 
         meep_power = caseus.MinimalServer.Connection.SynchronizedAttr(5)
 
+        can_teleport = caseus.MinimalServer.Connection.SynchronizedAttr(False)
+
         async def wait_closed(self):
             old_exhibit = self.exhibit
             self.exhibit = None
@@ -128,14 +130,7 @@ class Museum(caseus.MinimalServer):
     async def _swap_exhibit(self, client, new_exhibit):
         # Stop the client from thinking it's a synchronizer.
         if client is client.exhibit.synchronizer:
-            await client.write_packet(
-                caseus.clientbound.LegacyWrapperPacket,
-
-                nested = caseus.clientbound.SetSynchronizerPacket(
-                    session_id            = 0,
-                    spawn_initial_objects = False,
-                ),
-            )
+            await client.write_packet(caseus.clientbound.DisableSynchronizationPacket)
 
         # NOTE: We don't call '_on_exit_exhibit'
         # because that will do more than is necessary
@@ -241,6 +236,8 @@ class Museum(caseus.MinimalServer):
 
         # NOIE: This system does not make
         # stale session IDs available again.
+        # However I believe the official
+        # server uses the same system.
         if self._last_session_id >= self.MAX_SESSION_ID:
             await client.account_error()
 

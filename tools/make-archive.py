@@ -61,6 +61,9 @@ async def archive_external_map_data(data_dir, archive_dir, xml_path):
         if len(xml) > 0:
             settings = xml[0]
 
+            # TODO: Should we bother de-duplicating the
+            # code for downloading all these images?
+
             background_images = settings.get("D")
             if background_images is not None:
                 if background_images.startswith("#"):
@@ -87,6 +90,52 @@ async def archive_external_map_data(data_dir, archive_dir, xml_path):
             foreground_images = settings.get("d")
             if foreground_images is not None:
                 for descriptor in foreground_images.split(";"):
+                    image_path = descriptor.split(",", 1)[0]
+
+                    tg.create_task(
+                        download(archive_dir, TRANSFORMICE_IMAGE_PARENT_URL + image_path)
+                    )
+
+            # Images that are on the foreground layer but
+            # fade away when the player enters a certain
+            # area, usually the bounds of the image.
+            receding_images = settings.get("APS")
+            if receding_images is not None:
+                for descriptor in receding_images.split(";"):
+                    image_path = descriptor.split(",", 1)[0]
+
+                    if ATELIER_IMAGE_PATTERN.match(image_path) is not None:
+                        download_url = ATELIER_IMAGE_PARENT_URL + image_path
+
+                    else:
+                        download_url = TRANSFORMICE_IMAGE_PARENT_URL + image_path
+
+                    tg.create_task(
+                        download(archive_dir, download_url)
+                    )
+
+            # Images that start off invisible but fade
+            # into view on the background layer when
+            # the player enters a certain area.
+            advancing_images = settings.get("ARPS")
+            if advancing_images is not None:
+                for descriptor in advancing_images.split(";"):
+                    image_path = descriptor.split(",", 1)[0]
+
+                    if ATELIER_IMAGE_PATTERN.match(image_path) is not None:
+                        download_url = ATELIER_IMAGE_PARENT_URL + image_path
+
+                    else:
+                        download_url = TRANSFORMICE_IMAGE_PARENT_URL + image_path
+
+                    tg.create_task(
+                        download(archive_dir, download_url)
+                    )
+
+            # Images that can be controlled by certain game actions.
+            controlled_images = settings.get("IP")
+            if controlled_images is not None:
+                for descriptor in controlled_images.split(";"):
                     image_path = descriptor.split(",", 1)[0]
 
                     tg.create_task(
