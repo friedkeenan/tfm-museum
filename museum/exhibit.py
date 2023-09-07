@@ -926,7 +926,7 @@ class Exhibit(pak.AsyncPacketHandler):
             y                   = packet.y,
             velocity_x          = packet.velocity_x,
             velocity_y          = packet.velocity_y,
-            honeyed_seconds     = packet.honeyed_seconds,
+            friction_info       = packet.friction_info,
             jumping             = packet.jumping,
             jumping_frame_index = packet.jumping_frame_index,
             entered_portal      = packet.entered_portal,
