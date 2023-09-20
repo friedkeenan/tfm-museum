@@ -15,5 +15,5 @@ class Lobby(Exhibit):
     async def on_player_died(self, client):
         await self.respawn(client)
 
-    async def on_player_victory(self, client):
+    async def on_player_victory(self, client, victory_time):
         await self.respawn(client)

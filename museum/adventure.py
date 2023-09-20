@@ -102,6 +102,21 @@ class AdventureExhibit(Exhibit):
 
         await self.on_enter_area(client, packet)
 
+    async def reset_adventure(self):
+        await self.broadcast_packet(
+            caseus.clientbound.UpdateAdventuresPacket,
+
+            adventure_id_list = [self.adventure_id],
+            enable            = False,
+        )
+
+        await self.broadcast_packet(
+            caseus.clientbound.UpdateAdventuresPacket,
+
+            adventure_id_list = [self.adventure_id],
+            enable            = True,
+        )
+
     async def on_enter_exhibit(self, client):
         await client.write_packet(
             caseus.clientbound.UpdateAdventuresPacket,

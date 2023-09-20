@@ -19,6 +19,46 @@ http://www.transformice.com/images/x_bibliotheques/costume1.swf
 
 # TODO: Archive furs for NPCs.
 
+# Common vendor items.
+http://www.transformice.com/images/x_transformice/x_inventaire/2.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/3.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/4.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/16.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/18.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/22.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/23.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/28.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/29.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/30.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/33.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/35.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2232.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2241.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2252.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2255.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2256.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2257.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2262.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2330.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2349.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2351.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2379.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2472.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2473.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2488.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2497.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2513.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2514.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2520.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2521.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2522.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2523.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2524.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2575.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2576.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2581.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2585.jpg
+
 # Archive the translation sets.
 http://www.transformice.com/langues/tfm-af.gz
 http://www.transformice.com/langues/tfm-am.gz

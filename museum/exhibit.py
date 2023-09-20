@@ -41,6 +41,8 @@ class Exhibit(pak.AsyncPacketHandler):
 
     shaman_color = 0x95D9D6
 
+    original_year = None
+
     incomplete = False
 
     ROUND_SHORTEN_TIME = 20
@@ -185,7 +187,7 @@ class Exhibit(pak.AsyncPacketHandler):
     async def on_player_died(self, client):
         pass
 
-    async def on_player_victory(self, client):
+    async def on_player_victory(self, client, victory_time):
         pass
 
     async def on_get_cheese(self, client, packet):
@@ -200,22 +202,31 @@ class Exhibit(pak.AsyncPacketHandler):
     async def on_click_npc(self, client, npc_name):
         pass
 
-    async def server_message(self, translation_key, *translation_args, general_channel=True):
+    async def server_message(self, template, *template_args, general_channel=True):
         await self.broadcast_packet(
             caseus.clientbound.ServerMessagePacket,
 
-            general_channel  = general_channel,
-            translation_key  = translation_key,
-            translation_args = [str(arg) for arg in translation_args],
+            general_channel = general_channel,
+            template        = template,
+            template_args   = [str(arg) for arg in template_args],
         )
 
-    async def server_message_for_individual(self, client, translation_key, *translation_args, general_channel=True):
+    async def server_message_for_individual(self, client, template, *template_args, general_channel=True):
         await client.write_packet(
             caseus.clientbound.ServerMessagePacket,
 
-            general_channel  = general_channel,
-            translation_key  = translation_key,
-            translation_args = [str(arg) for arg in translation_args],
+            general_channel = general_channel,
+            template        = template,
+            template_args   = [str(arg) for arg in template_args],
+        )
+
+    async def translated_general_message(self, client, template, *template_args, language=""):
+        await client.write_packet(
+            caseus.clientbound.TranslatedGeneralMessagePacket,
+
+            language      = language,
+            template      = template,
+            template_args = [str(arg) for arg in template_args],
         )
 
     async def kill(self, client, *, only_others=False, type=caseus.enums.DeathType.Normal):
@@ -240,10 +251,16 @@ class Exhibit(pak.AsyncPacketHandler):
             await self.on_player_died(client)
 
     async def victory(self, client):
+        if self.round_duration <= 0:
+            victory_time = 0
+        else:
+            victory_time = asyncio.get_running_loop().time() - self._round_start
+
         await self.broadcast_packet(
             caseus.clientbound.PlayerVictoryPacket,
 
             session_id = client.session_id,
+            seconds    = victory_time,
         )
 
         client.activity = caseus.enums.PlayerActivity.Dead
@@ -253,7 +270,7 @@ class Exhibit(pak.AsyncPacketHandler):
 
         self._has_player_won = True
 
-        await self.on_player_victory(client)
+        await self.on_player_victory(client, victory_time)
 
     async def respawn(self, client):
         client.activity   = caseus.enums.PlayerActivity.Alive
@@ -338,6 +355,12 @@ class Exhibit(pak.AsyncPacketHandler):
             ),
         )
 
+    # TODO: Replace all uses of this with a 'give_inventory_item'
+    # method which also sends the notification for new items.
+    #
+    # Properly doing this will require going through old exhibits
+    # and giving items which were not visible before. It will be
+    # well worth it though to properly capture the original experience.
     async def raise_inventory_item(self, client, item_id):
         if isinstance(client, int):
             session_id = client
@@ -571,13 +594,17 @@ class Exhibit(pak.AsyncPacketHandler):
 
         await self.setup_round(client)
 
+    def setup_round_timings(self, round_start):
+        pass
+
     def _setup_round_timings(self):
         if self.round_duration <= 0:
             return
 
-        time = asyncio.get_running_loop().time()
+        self._round_start = asyncio.get_running_loop().time()
+        self._round_end   = self._round_start + self.round_duration
 
-        self._round_end = time + self.round_duration
+        self.setup_round_timings(self._round_start)
 
         # TODO: Should the time be dynamic with '_round_end' since that
         # can change if e.g. the round gets shortened? Or would that be
@@ -585,7 +612,7 @@ class Exhibit(pak.AsyncPacketHandler):
         # happen? Leaning towards keeping the current situation of being
         # based on just when the round started.
         self._active_round_time_listeners = {
-            time + passed_time: listeners for passed_time, listeners in self._round_time_listeners.items()
+            self._round_start + passed_time: listeners for passed_time, listeners in self._round_time_listeners.items()
         }
 
         if self._check_round_timings_task is None:
@@ -604,6 +631,8 @@ class Exhibit(pak.AsyncPacketHandler):
                 time = loop.time()
 
                 if time >= self._round_end:
+                    await self.on_round_end()
+
                     await self.start_new_round()
 
                     continue
@@ -695,6 +724,9 @@ class Exhibit(pak.AsyncPacketHandler):
 
         self._setup_round_timings()
 
+    async def on_round_end(self):
+        pass
+
     def activity_for_new_client(self, client):
         return caseus.enums.PlayerActivity.Dead
 
@@ -709,6 +741,12 @@ class Exhibit(pak.AsyncPacketHandler):
             return
 
         await client.general_message("<B><R>Warning! This exhibit is <J>INCOMPLETE</J>!</R></B>")
+
+    async def _inform_year(self, client):
+        if self.original_year is None:
+            return
+
+        await client.general_message(f"<B><BV>This exhibit is from the year <J>{self.original_year}</J>.</BV></B>")
 
     async def _joined_room(self, client):
         await client.write_packet(
@@ -742,6 +780,7 @@ class Exhibit(pak.AsyncPacketHandler):
         client.has_sent_anchors = False
 
         await self._warn_incomplete(client)
+        await self._inform_year(client)
 
         await self.on_enter_exhibit(client)
 
@@ -769,6 +808,7 @@ class Exhibit(pak.AsyncPacketHandler):
         client.has_sent_anchors = False
 
         await self._warn_incomplete(client)
+        await self._inform_year(client)
 
         client._last_npc_click_name        = None
         client._last_npc_click_fingerprint = None
@@ -864,6 +904,9 @@ class Exhibit(pak.AsyncPacketHandler):
             return
 
         if packet.round_id != self.round_id:
+            return
+
+        if len(packet.objects) <= 0:
             return
 
         await self.broadcast_packet_except(
