@@ -61,6 +61,7 @@ class Geography(AdventureExhibit):
         "MX",
         "UA",
         "AU",
+        "IN",
     ]
 
     CORRECT_COUNTRY_TEMPLATE   = "<V>$RentreeBonPays</V>"
