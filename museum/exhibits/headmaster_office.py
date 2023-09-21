@@ -119,6 +119,15 @@ class Headmaster_Office(ShopExhibit):
 
         "Mélo": [
             caseus.clientbound.OpenNPCShopPacket.ItemInfo(
+                type          = caseus.enums.NPCItemType.Emoji,
+                item_id       = 20003,
+                quantity      = 1,
+                cost_type     = caseus.enums.NPCItemType.Inventory,
+                cost_id       = 2586,
+                cost_quantity = 20,
+            ),
+
+            caseus.clientbound.OpenNPCShopPacket.ItemInfo(
                 type          = caseus.enums.NPCItemType.Inventory,
                 item_id       = 2257,
                 quantity      = 1,
