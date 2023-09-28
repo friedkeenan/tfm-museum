@@ -60,8 +60,12 @@ class Geography(AdventureExhibit):
         "LY",
         "MX",
         "UA",
-        "AU",
         "IN",
+
+        # NOTE: The '$CarteMonde' object has an '$AU'
+        # child object, and would work perfectly fine
+        # on the client's end, but for some reason, the
+        # server never sends it.
     ]
 
     CORRECT_COUNTRY_TEMPLATE   = "<V>$RentreeBonPays</V>"
