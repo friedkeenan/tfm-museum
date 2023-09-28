@@ -18,7 +18,11 @@ class Running_Track(AdventureExhibit):
 
     round_duration = 60
 
-    has_synchronizer = True
+    # NOTE: This map does have a synchronizer, but
+    # the only objects that will exist are cannonballs,
+    # and the client will neglect to sync any cannonballs
+    # on this map. And so we do not bother with having
+    # a synchronizer.
 
     # NOTE: Educated guesses based on very
     # many samples. These durations do appear
