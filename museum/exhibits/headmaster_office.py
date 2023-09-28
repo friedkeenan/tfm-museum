@@ -61,6 +61,15 @@ class Headmaster_Office(ShopExhibit):
     NPC_SHOPS = {
         "Prof": [
             caseus.clientbound.OpenNPCShopPacket.ItemInfo(
+                type          = caseus.enums.NPCItemType.ShopItem,
+                item_id       = 484,
+                quantity      = 1,
+                cost_type     = caseus.enums.NPCItemType.Inventory,
+                cost_id       = 2335,
+                cost_quantity = 80,
+            ),
+
+            caseus.clientbound.OpenNPCShopPacket.ItemInfo(
                 type          = caseus.enums.NPCItemType.Cartouche,
                 item_id       = 69,
                 quantity      = 1,
