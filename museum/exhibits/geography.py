@@ -75,23 +75,20 @@ class Geography(AdventureExhibit):
     PASSED_TEMPLATE  = "<V>$RentreeEpreuveReussie</V>"
     FAILED_TEMPLATE  = "<R>$RentreeEpreuveEchouee</R>"
 
-    def setup_round_timings(self, round_start):
-        self.next_flag_time = round_start + self.INITIAL_FLAG_TIME
+    async def send_next_flag(self):
+        self.active_country = self.possible_countries.pop()
 
-    async def check_round_timings(self, time):
-        if len(self.possible_countries) <= 0:
-            return
+        async with asyncio.TaskGroup() as tg:
+            for client in self.clients:
+                tg.create_task(
+                    self.adventure_action(client, 3, self.active_country)
+                )
 
-        if time >= self.next_flag_time:
-            self.active_country = self.possible_countries.pop()
+        if len(self.possible_countries) > 0:
+            self.schedule(self.FLAG_INTERVAL, self.send_next_flag)
 
-            async with asyncio.TaskGroup() as tg:
-                for client in self.clients:
-                    tg.create_task(
-                        self.adventure_action(client, 3, self.active_country)
-                    )
-
-            self.next_flag_time = time + self.FLAG_INTERVAL
+    def perform_initial_scheduling(self):
+        self.schedule(self.FLAG_INTERVAL, self.send_next_flag)
 
     async def start_new_round(self):
         self.possible_countries = random.sample(self.COUNTRIES, self.FLAGS_SHOWN)

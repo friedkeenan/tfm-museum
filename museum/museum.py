@@ -86,7 +86,7 @@ class Museum(caseus.MinimalServer):
         *,
         data_dir = Path("data"),
 
-        language               = "en",
+        language               = "int",
         country                = "int",
         right_to_left          = False,
         has_special_characters = False,

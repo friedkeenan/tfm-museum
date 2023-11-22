@@ -58,16 +58,12 @@ class Running_Track(AdventureExhibit):
             colors               = [],
         )
 
-    def setup_round_timings(self, round_start):
-        self.next_cannon_time = round_start + random.choice(self.INITIAL_CANNON_TIMES)
+        self.next_cannon_id += 1
 
-    async def check_round_timings(self, time):
-        if time >= self.next_cannon_time:
-            await self.launch_cannon()
+        self.schedule(random.choice(self.CANNON_INTERVALS), self.launch_cannon)
 
-            self.next_cannon_id += 1
-
-            self.next_cannon_time = time + random.choice(self.CANNON_INTERVALS)
+    def perform_initial_scheduling(self):
+        self.schedule(random.choice(self.INITIAL_CANNON_TIMES), self.launch_cannon)
 
     async def on_player_victory(self, client, victory_time):
         if victory_time <= self.PASS_TIME:

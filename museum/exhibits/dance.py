@@ -29,11 +29,6 @@ class Dance(AdventureExhibit):
     INCOMPLETE_TEMPLATE = "<R>$RentreeSerieEchouee</R>"
     INCOMPLETE_REWARD   = 2335
 
-    def setup_round_timings(self, round_start):
-        self.next_arrows_time = round_start + self.ARROW_INTERVALS[0]
-
-        self.arrow_intervals = self.ARROW_INTERVALS[1:]
-
     async def _report_complete(self, client):
         await self.translated_general_message(client, self.COMPLETED_TEMPLATE)
         await self.raise_inventory_item(client, self.COMPLETED_REWARD)
@@ -51,25 +46,26 @@ class Dance(AdventureExhibit):
 
         await self.adventure_action(client, 2, *next_arrows)
 
-    async def check_round_timings(self, time):
-        if len(self.arrow_groups) <= 0:
-            return
+    async def send_next_arrows(self):
+        # If this is not the first set of arrows,
+        # check whether the clients failed the dance.
+        check_incomplete = len(self.arrow_groups) < len(self.ARROW_COUNTS)
 
-        if time >= self.next_arrows_time:
-            # If this is not the first set of arrows,
-            # check whether the clients failed the dance.
-            check_incomplete = len(self.arrow_groups) < len(self.ARROW_COUNTS)
+        next_arrows = self.arrow_groups.pop(0)
 
-            next_arrows = self.arrow_groups.pop(0)
+        async with asyncio.TaskGroup() as tg:
+            for client in self.clients:
+                tg.create_task(
+                    self._send_next_arrows(client, next_arrows, check_incomplete=check_incomplete)
+                )
 
-            async with asyncio.TaskGroup() as tg:
-                for client in self.clients:
-                    tg.create_task(
-                        self._send_next_arrows(client, next_arrows, check_incomplete=check_incomplete)
-                    )
+        if len(self.arrow_intervals) > 0:
+            self.schedule(self.arrow_intervals.pop(0), self.send_next_arrows)
 
-            if len(self.arrow_intervals) > 0:
-                self.next_arrows_time = time + self.arrow_intervals.pop(0)
+    def perform_initial_scheduling(self):
+        self.arrow_intervals = self.ARROW_INTERVALS[1:]
+
+        self.schedule(self.ARROW_INTERVALS[0], self.send_next_arrows)
 
     async def on_exit_exhibit(self, client):
         try:

@@ -150,3 +150,4 @@ http://www.transformice.com/langues/tfm-vi.gz
 http://www.transformice.com/langues/tfm-wo.gz
 http://www.transformice.com/langues/tfm-yo.gz
 http://www.transformice.com/langues/tfm-zh.gz
+http://www.transformice.com/langues/tfm-int.gz

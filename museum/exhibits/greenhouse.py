@@ -64,8 +64,7 @@ class Greenhouse(AdventureExhibit):
             self.left_seed  = None
             self.right_seed = None
 
-            self._growth_start = None
-            self.has_grown     = False
+            self.has_grown = False
 
         @property
         def left_seed_x(self):
@@ -162,16 +161,6 @@ class Greenhouse(AdventureExhibit):
         except AttributeError:
             pass
 
-    async def check_round_timings(self, time):
-        for pot in self.pots:
-            if pot._growth_start is None or pot.has_grown:
-                continue
-
-            if time >= pot._growth_start + self.POT_GROWTH_TIME:
-                pot.has_grown = True
-
-                await self.update_pot(pot)
-
     async def start_new_round(self):
         self.needed_flower = self.random_flower()
 
@@ -267,6 +256,11 @@ class Greenhouse(AdventureExhibit):
                         self.raise_inventory_item(client, self.REWARD_ID)
                     )
 
+    async def _grow_pot(self, pot):
+        pot.has_grown = True
+
+        await self.update_pot(pot)
+
     async def update_pot(self, pot):
         if pot.has_grown:
             await self.remove_official_image(pot.sprout_name)
@@ -309,7 +303,7 @@ class Greenhouse(AdventureExhibit):
             name       = pot.sprout_name,
         )
 
-        pot._growth_start = asyncio.get_running_loop().time()
+        self.schedule(self.POT_GROWTH_TIME, self._grow_pot, pot)
 
     async def setup_round(self, client):
         async with asyncio.TaskGroup() as tg:

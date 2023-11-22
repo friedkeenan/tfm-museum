@@ -3,7 +3,7 @@ import caseus
 import random
 
 from ..adventure import AdventureExhibit
-from ..exhibit   import available, round_time_listener
+from ..exhibit   import available
 
 @available
 class Rain(AdventureExhibit):
@@ -50,6 +50,25 @@ class Rain(AdventureExhibit):
         8: [2245, 800],
     }
 
+    # NOTE: Exact time of immobilization is an educated guess.
+    # The plank is removed after 15 seconds, but the latest
+    # I've seen players move in videos is right before 12
+    # seconds have passed, and with players who were moving
+    # at that point, it seems like the client extrapolates
+    # their movement a little forward and then they rubberband
+    # back, suggesting that the player was immobilized while moving.
+    FREEZE_PLAYERS_TIME = 12
+
+    async def immobilize_players(self):
+        await self.broadcast_packet(
+            caseus.clientbound.ImmobilizePlayerPacket,
+
+            immobilize = True,
+        )
+
+    def perform_initial_scheduling(self):
+        self.schedule(self.FREEZE_PLAYERS_TIME, self.immobilize_players)
+
     async def setup_round(self, client):
         # NOTE: Individual IDs not based on anything.
         individual_id = 0
@@ -88,18 +107,3 @@ class Rain(AdventureExhibit):
         berry_id = self.individual_id_to_collectible_id(packet.individual_id)
 
         await self.raise_inventory_item(client, random.choice(self.REWARDS[berry_id]))
-
-    # NOTE: Exact time of immobilization is an educated guess.
-    # The plank is removed after 15 seconds, but the latest
-    # I've seen players move in videos is right before 12
-    # seconds have passed, and with players who were moving
-    # at that point, it seems like the client extrapolates
-    # their movement a little forward and then they rubberband
-    # back, suggesting that the player was immobilized while moving.
-    @round_time_listener(12)
-    async def immobilize_players(self):
-        await self.broadcast_packet(
-            caseus.clientbound.ImmobilizePlayerPacket,
-
-            immobilize = True,
-        )

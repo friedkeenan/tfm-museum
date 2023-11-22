@@ -19,15 +19,6 @@ def available(cls):
     return cls
 
 @public
-def round_time_listener(passed_time):
-    def decorator(listener):
-        listener._round_time_listener_passed_time = passed_time
-
-        return listener
-
-    return decorator
-
-@public
 class Exhibit(pak.AsyncPacketHandler):
     map_code     = None
     map_xml_path = None
@@ -65,26 +56,19 @@ class Exhibit(pak.AsyncPacketHandler):
 
         self._map_xml_data = None
 
-        self._has_player_won         = False
+        self._has_player_won = False
 
-        self._round_time_listeners        = {}
-        self._active_round_time_listeners = {}
-        self._round_end           = 0
-
-        self._check_round_timings_task = None
-
-        for _, attr in inspect.getmembers(self, lambda x: hasattr(x, "_round_time_listener_passed_time")):
-            self.register_round_time_listener(attr._round_time_listener_passed_time, attr)
+        self._handle_round_timings_task = None
 
     def close(self):
-        if self._check_round_timings_task is not None:
-            self._check_round_timings_task.cancel()
+        if self._handle_round_timings_task is not None:
+            self._handle_round_timings_task.cancel()
 
     async def wait_closed(self):
-        if self._check_round_timings_task is not None:
-            await self._check_round_timings_task
+        if self._handle_round_timings_task is not None:
+            await self._handle_round_timings_task
 
-            self._check_round_timings_task = None
+            self._handle_round_timings_task = None
 
         await self.end_listener_tasks()
 
@@ -536,11 +520,14 @@ class Exhibit(pak.AsyncPacketHandler):
         pass
 
     def round_time(self):
-        time = asyncio.get_running_loop().time()
-        if time >= self._round_end:
+        if self.round_duration <= 0:
             return 0
 
-        return int(self._round_end - time)
+        time = asyncio.get_running_loop().time()
+        if time >= self._round_end_timeout.when():
+            return 0
+
+        return int(self._round_end_timeout.when() - time)
 
     async def send_round(self, client, *, players=None, spawn_initial_objects=False, duration=None):
         await client.write_packet(
@@ -594,95 +581,82 @@ class Exhibit(pak.AsyncPacketHandler):
 
         await self.setup_round(client)
 
-    def setup_round_timings(self, round_start):
+    def perform_initial_scheduling(self):
         pass
 
     def _setup_round_timings(self):
         if self.round_duration <= 0:
             return
 
-        self._round_start = asyncio.get_running_loop().time()
-        self._round_end   = self._round_start + self.round_duration
+        self._round_start       = asyncio.get_running_loop().time()
+        self._round_end_timeout = asyncio.timeout_at(self._round_start + self.round_duration)
 
-        self.setup_round_timings(self._round_start)
+        self._scheduled_tasks = []
 
-        # TODO: Should the time be dynamic with '_round_end' since that
-        # can change if e.g. the round gets shortened? Or would that be
-        # weird for the round to shorten and then have a bunch of things
-        # happen? Leaning towards keeping the current situation of being
-        # based on just when the round started.
-        self._active_round_time_listeners = {
-            self._round_start + passed_time: listeners for passed_time, listeners in self._round_time_listeners.items()
-        }
+        if self._handle_round_timings_task is None:
+            self._handle_round_timings_task = asyncio.create_task(self._handle_round_timings())
 
-        if self._check_round_timings_task is None:
-            self._check_round_timings_task = asyncio.create_task(self._check_round_timings())
+        self.perform_initial_scheduling()
 
-    async def _check_round_timings(self):
-        # NOTE: This could maybe be adjusted to use a 'Timeout'
-        # object, but that might be strange with the round time
-        # listening functionality, and so we're currently sticking
-        # with what we have.
+    def schedule(self, delay, coro_func, /, *args, **kwargs):
+        async def wrapper():
+            try:
+                await asyncio.sleep(delay)
 
-        loop = asyncio.get_running_loop()
+                await coro_func(*args, **kwargs)
 
+            except asyncio.CancelledError:
+                pass
+
+        self._scheduled_tasks.append(asyncio.create_task(wrapper()))
+
+    async def _handle_round_timings(self):
         try:
             while self.museum.is_serving():
-                time = loop.time()
+                never_ending_future = asyncio.get_running_loop().create_future()
 
-                if time >= self._round_end:
-                    await self.on_round_end()
+                try:
+                    async with self._round_end_timeout:
+                        await never_ending_future
 
-                    await self.start_new_round()
+                except TimeoutError:
+                    pass
 
-                    continue
+                await self.on_round_end()
 
-                async with asyncio.TaskGroup() as tg:
-                    tg.create_task(
-                        self.check_round_timings(time)
-                    )
+                for task in self._scheduled_tasks:
+                    task.cancel()
 
-                    inactive_listener_times = []
-                    for listener_time, listeners in self._active_round_time_listeners.items():
-                        if time >= listener_time:
-                            for listener in listeners:
-                                tg.create_task(
-                                    listener()
-                                )
+                await asyncio.gather(*self._scheduled_tasks)
 
-                            inactive_listener_times.append(listener_time)
-
-                    for listener_time in inactive_listener_times:
-                        self._active_round_time_listeners.pop(listener_time)
-
-                await pak.util.yield_exec()
+                await self.start_new_round()
 
         except asyncio.CancelledError:
-            return
-
-    async def check_round_timings(self, time):
-        pass
+            pass
 
     async def shorten_round(self, round_time=None):
         if round_time is None:
             round_time = self.ROUND_SHORTEN_TIME
 
         new_round_end = asyncio.get_running_loop().time() + round_time
-        if new_round_end < self._round_end:
+        if new_round_end < self._round_end_timeout.when():
             await self.broadcast_packet(
                 caseus.clientbound.SetRoundTimerPacket,
 
                 seconds = round_time,
             )
 
-            self._round_end = new_round_end
+            self._round_end_timeout.reschedule(new_round_end)
 
     async def check_shorten_round(self):
+        if self.round_duration <= 0:
+            return
+
         num_alive_clients = len(self.alive_clients)
 
         if num_alive_clients <= 0:
             # Let the check round ended task handle the new round.
-            self._round_end = 0
+            self._round_end_timeout.reschedule(0)
 
             return
 
