@@ -96,6 +96,45 @@ class Shops:
         ),
     ]
 
+    LUNA_CHRISTMAS_2023 = [
+        *LUNA_BACK_TO_SCHOOL_2023,
+
+        caseus.clientbound.OpenNPCShopPacket.ItemInfo(
+            type          = caseus.enums.NPCItemType.Inventory,
+            item_id       = 2591,
+            quantity      = 1,
+            cost_type     = caseus.enums.NPCItemType.Inventory,
+            cost_id       = 2497,
+            cost_quantity = 1,
+        ),
+    ]
+
+    LUNA_GROUNDHOG_2024 = [
+        *LUNA_CHRISTMAS_2023,
+
+        caseus.clientbound.OpenNPCShopPacket.ItemInfo(
+            type          = caseus.enums.NPCItemType.Inventory,
+            item_id       = 2609,
+            quantity      = 1,
+            cost_type     = caseus.enums.NPCItemType.Inventory,
+            cost_id       = 2497,
+            cost_quantity = 1,
+        ),
+    ]
+
+    LUNA_NINJA_2024 = [
+        *LUNA_GROUNDHOG_2024,
+
+        caseus.clientbound.OpenNPCShopPacket.ItemInfo(
+            type          = caseus.enums.NPCItemType.Inventory,
+            item_id       = 2612,
+            quantity      = 1,
+            cost_type     = caseus.enums.NPCItemType.Inventory,
+            cost_id       = 2497,
+            cost_quantity = 1,
+        ),
+    ]
+
     MOUSINI = [
         caseus.clientbound.OpenNPCShopPacket.ItemInfo(
             type          = caseus.enums.NPCItemType.Inventory,
