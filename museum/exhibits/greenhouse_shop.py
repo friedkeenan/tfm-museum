@@ -1,15 +1,12 @@
 import caseus
 
-import asyncio
-import random
-
 from ..exhibit import available
 from ..shop    import Shops, ShopExhibit
 
 @available
 class Greenhouse_Shop(ShopExhibit):
     map_code     = 2801
-    map_xml_path = "Greenhouse/Shop_2023.xml"
+    map_xml_path = "Common/Shop.xml"
 
     map_category   = caseus.enums.MapCategory.UserMadeVanilla
     round_duration = 60

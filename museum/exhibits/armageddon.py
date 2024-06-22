@@ -1,4 +1,5 @@
 import asyncio
+import math
 
 from ..adventure import AdventureExhibit
 from ..exhibit   import available
@@ -13,25 +14,21 @@ class Armageddon(AdventureExhibit):
     FEATHER_ID   = 9
     FEATHER_PATH = "x_transformice/x_aventure/x_recoltables/x_9.png"
 
-    # NOTE: Educated guesses.
-    FEATHER_OFFSET_X = -28
+    FEATHER_OFFSET_X = -21
     FEATHER_OFFSET_Y = -22
 
-    # NOTE: Educated guesses.
     FEATHER_X = 50
-    FEATHER_Y = [180, 70]
+    FEATHER_Y = [70, 180]
 
-    # NOTE: Educated guesses.
-    FEATHER_DEPOSIT_X      = 370
-    FEATHER_DEPOSIT_Y      = 330
-    FEATHER_DEPOSIT_WIDTH  = 100
-    FEATHER_DEPOSIT_HEIGHT = 30
+    FEATHER_DEPOSIT_X      = 350
+    FEATHER_DEPOSIT_Y      = 300
+    FEATHER_DEPOSIT_WIDTH  = 128
+    FEATHER_DEPOSIT_HEIGHT = 60
 
-    # TODO: Apparently the original value was '32'.
-    # This does not seem very feasible to beat with
-    # only one player. Should we add an option to
-    # change this?
-    FEATHER_TOTAL = 32
+    # NOTE: I believe that previously in 2016 the needed
+    # amount of feathers was a static value of '32'.
+    NEEDED_FEATHERS_MULTIPLIER = 1.5
+    MIN_NEEDED_FEATHERS        = 15
 
     async def add_feather(self, client, id):
         await self.add_collectible(
@@ -46,20 +43,24 @@ class Armageddon(AdventureExhibit):
     async def start_new_round(self):
         self.feather_progress = 0
 
+        self.total_feathers = max(
+            self.MIN_NEEDED_FEATHERS,
+
+            math.floor(len(self.clients) * self.NEEDED_FEATHERS_MULTIPLIER),
+        )
+
         await super().start_new_round()
 
     async def report_feather_progress_to(self, client):
-        await self.adventure_action(client, 10, self.FEATHER_TOTAL, self.feather_progress)
+        await self.adventure_action(client, 10, self.total_feathers, self.feather_progress)
 
-        if self.feather_progress >= self.FEATHER_TOTAL:
+        if self.feather_progress >= self.total_feathers:
             await self.adventure_action(client, 2)
 
     async def increment_feather_progress(self):
-        # NOTE: I do not know whether the server still changed
-        # the feather progress after reaching the required feathers,
-        # but it would not have resulted in any visual changes.
-        if self.feather_progress >= self.FEATHER_TOTAL:
-            return
+        # NOTE: The server still updates the client on the feather
+        # progress even after the needed amount has been reached,
+        # despite it not resulting in any visual changes.
 
         self.feather_progress += 1
 
@@ -68,6 +69,9 @@ class Armageddon(AdventureExhibit):
                 tg.create_task(
                     self.report_feather_progress_to(client)
                 )
+
+        if self.feather_progress == self.total_feathers:
+            await self.shorten_round()
 
     async def on_exit_exhibit(self, client):
         try:
@@ -79,11 +83,20 @@ class Armageddon(AdventureExhibit):
     async def setup_round(self, client):
         client.carrying_id = None
 
-        # NOTE: The specific IDs used aren't based on anything.
+        # NOTE: The collectible IDs increment like other events,
+        # where they globally increment per satellite server.
+        #
+        # The feathers have adjacent ID values, for instance
+        # the higher feather would have 49 and the lower would
+        # have 50 as its ID value.
+        #
+        # For the exhibit we just use the index from 'FEATHER_Y'.
         for id in range(len(self.FEATHER_Y)):
             await self.add_feather(client, id)
 
-        # NOTE: Area ID not based on anything.
+        # NOTE: The area ID would increment per-room(!) starting at '1'.
+        #
+        # Here however we just always send the same area ID of '1'.
         await self.add_area(
             client,
 

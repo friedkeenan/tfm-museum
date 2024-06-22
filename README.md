@@ -28,6 +28,7 @@ https://user-images.githubusercontent.com/20881398/230795738-b1790f6f-ed2e-4158-
 The currently available exhibits are:
 
 - [Armageddon](https://transformice.fandom.com/wiki/Armageddon_2016)
+- [Armageddon_Shop](https://transformice.fandom.com/wiki/Armageddon_2024#Shops)
 - [Astrological](https://transformice.fandom.com/wiki/Astrological_2016)
 - [Dance](https://transformice.fandom.com/wiki/Back_to_School_2023#Dance)
 - [Dino](https://transformice.fandom.com/wiki/Dino_2016)

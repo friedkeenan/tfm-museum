@@ -2,3 +2,9 @@ http://www.transformice.com/images/x_transformice/x_aventure/x_banniere/x_10.jpg
 
 http://www.transformice.com/images/x_transformice/x_evt/x_evt_10/YIKDFERT/BOSS_AnvilGod.png
 http://www.transformice.com/images/x_transformice/x_aventure/x_recoltables/x_9.png
+
+http://www.transformice.com/images/x_transformice/x_inventaire/2251.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2257.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2480.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2497.jpg
+http://www.transformice.com/images/x_transformice/x_inventaire/2616.jpg
